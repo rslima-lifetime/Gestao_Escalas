@@ -270,10 +270,10 @@ const ObreirosTab: React.FC<Props> = ({ data, setData }) => {
                 {obreiro.preferredRole === 'abertura' ? <Key size={24} /> : obreiro.preferredRole === 'apoio' ? <Users size={24} /> : <Layers size={24} />}
               </div>
               <div className="flex-grow min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-[8px] font-black bg-blue-900 text-white px-2 py-0.5 rounded-full uppercase">{obreiro.role}</span>
-                  <h3 className="font-black text-slate-900 text-sm truncate uppercase tracking-tighter">{obreiro.name}</h3>
-                  {obreiro.linkedWorkerId && <div className="text-blue-400" title="Possui Vínculo"><LinkIcon size={12} /></div>}
+                <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mb-0.5">
+                  <span className="text-[8px] font-black bg-blue-900 text-white px-2 py-0.5 rounded-full uppercase shrink-0">{obreiro.role}</span>
+                  <h3 className="font-black text-slate-900 text-sm uppercase tracking-tighter break-words leading-tight">{obreiro.name}</h3>
+                  {obreiro.linkedWorkerId && <div className="text-blue-400 shrink-0" title="Possui Vínculo"><LinkIcon size={12} /></div>}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Saldo: {obreiro.balance}</span>
