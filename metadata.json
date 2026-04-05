@@ -1,0 +1,5 @@
+{
+  "name": "Gestão de Escala ADFARE",
+  "description": "Sistema mobile-first para gestão de escala de obreiros com algoritmo de nivelamento de saldo e geração de relatório profissional.",
+  "requestFramePermissions": []
+}

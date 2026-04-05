@@ -1,0 +1,73 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ADFARE - Mural de Escala</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+      
+      body {
+        font-family: 'Inter', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        background-color: #f8fafc;
+      }
+
+      @media print {
+        .no-print { display: none !important; }
+        body { margin: 0; padding: 0; background-color: white !important; }
+      }
+
+      /* Largura exata para A4 Portrait em 96dpi para evitar cortes laterais */
+      .pdf-page-canvas {
+        width: 794px !important;
+        min-height: 1123px !important;
+        background-color: white !important;
+        margin: 0 auto !important;
+        padding: 40px !important;
+        box-sizing: border-box;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Impede que itens quebrem entre páginas se o conteúdo for longo */
+      .pdf-card {
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      /* Estilização da barra de rolagem */
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: #f1f1f1; }
+      ::-webkit-scrollbar-thumb { background: #1e3a8a; border-radius: 10px; }
+
+      @keyframes pulse-gentle {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.85; transform: scale(0.995); }
+      }
+      .animate-pulse-gentle {
+        animation: pulse-gentle 3s ease-in-out infinite;
+      }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+          "react/": "https://esm.sh/react@^19.2.3/",
+          "react": "https://esm.sh/react@^19.2.3",
+          "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+        }
+      }
+    </script>
+  <link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-slate-50 min-h-screen text-slate-900 overflow-x-hidden">
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
