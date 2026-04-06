@@ -192,7 +192,7 @@ const RelatorioTab: React.FC<Props> = ({ data, setData }) => {
       id={id} 
       className={`bg-white w-[420px] flex flex-col p-6 shadow-sm relative overflow-visible box-border ${isExport ? 'fixed left-[-2000px] top-0 z-[-1]' : ''}`}
     >
-      <div className="bg-blue-950 rounded-[32px] p-8 pb-10 text-white mb-8 border-b-[6px] border-blue-600 shadow-xl relative z-10 overflow-visible">
+      <div className="bg-adfare-navy rounded-[32px] p-8 pb-10 text-white mb-8 border-b-[6px] border-adfare-orange shadow-xl relative z-10 overflow-visible">
         <div className="flex flex-col overflow-visible">
           <div className="flex justify-between items-start mb-6 overflow-visible">
             <div className="flex flex-col">
@@ -273,7 +273,7 @@ const RelatorioTab: React.FC<Props> = ({ data, setData }) => {
       </div>
 
       <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm relative mb-10 overflow-visible">
-        <div className="absolute top-0 left-0 w-2 h-full bg-blue-600"></div>
+        <div className="absolute top-0 left-0 w-2 h-full bg-adfare-gradient"></div>
         <div className="flex items-start gap-4 overflow-visible">
           <Quote size={28} className="text-blue-100 shrink-0" />
           <div className="flex-grow overflow-visible">
@@ -345,10 +345,10 @@ const RelatorioTab: React.FC<Props> = ({ data, setData }) => {
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          <button onClick={() => handleExportPDF()} disabled={isExporting || cultosToShow.length === 0} className="py-4 bg-blue-900 text-white rounded-2xl font-black flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50">
+          <button onClick={() => handleExportPDF()} disabled={isExporting || cultosToShow.length === 0} className="py-4 bg-adfare-navy text-white rounded-2xl font-black flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50">
             <FileDown size={14} /> Salvar PDF
           </button>
-          <button onClick={handleExportImage} disabled={isExporting || cultosToShow.length === 0 || viewMode === 'print'} className="py-4 bg-emerald-600 text-white rounded-2xl font-black flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50">
+          <button onClick={handleExportImage} disabled={isExporting || cultosToShow.length === 0 || viewMode === 'print'} className="py-4 bg-adfare-gradient text-white rounded-2xl font-black flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest shadow-[0_8px_30px_rgb(243,112,33,0.3)] active:scale-95 transition-all disabled:opacity-50">
             {isExporting ? <div className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full" /> : <Share2 size={14} />} 
             {isExporting ? 'Processando...' : 'ZAP / Imagem'}
           </button>

@@ -145,7 +145,7 @@ const GestaoAcessosTab: React.FC = () => {
         </div>
         <button 
           onClick={() => setShowAddModal(true)}
-          className="bg-blue-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 active:scale-95 shadow-xl transition-all flex items-center gap-2"
+          className="bg-adfare-gradient text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:opacity-90 active:scale-95 shadow-[0_8px_30px_rgb(243,112,33,0.3)] transition-all flex items-center gap-2"
         >
           <UserPlus size={16} /> Nova Conta de Membro
         </button>
@@ -177,7 +177,7 @@ const GestaoAcessosTab: React.FC = () => {
                 )}
                 <div className="flex flex-col min-w-0">
                   <span className="text-sm font-black text-slate-800 uppercase tracking-tighter truncate">{u.nome || "Não definido"}</span>
-                  <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">{u.cargo || "Membro"}</span>
+                  <span className="text-[10px] font-bold text-adfare-orange uppercase tracking-widest">{u.cargo || "Membro"}</span>
                 </div>
               </div>
 
@@ -211,10 +211,10 @@ const GestaoAcessosTab: React.FC = () => {
       {showAddModal && (
         <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 flex flex-col">
-            <div className="bg-blue-950 p-6 flex justify-between items-center text-white">
+            <div className="bg-adfare-navy p-6 flex justify-between items-center text-white">
               <div>
                 <h3 className="text-lg font-black uppercase tracking-tighter flex items-center gap-2">
-                  <UserPlus className="text-blue-400" size={20} /> Cadastrar Membro
+                  <UserPlus className="text-adfare-orange" size={20} /> Cadastrar Membro
                 </h3>
               </div>
               <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white transition-colors">
@@ -261,7 +261,7 @@ const GestaoAcessosTab: React.FC = () => {
 
                <div className="pt-4 flex gap-3">
                  <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 px-4 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200">Cancelar</button>
-                 <button disabled={submitting} type="submit" className="flex-[2] px-4 py-3 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 disabled:opacity-50">
+                 <button disabled={submitting} type="submit" className="flex-[2] px-4 py-3 bg-adfare-gradient text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:opacity-90 disabled:opacity-50">
                    {submitting ? 'Aguarde...' : 'Criar Registro'}
                  </button>
                </div>

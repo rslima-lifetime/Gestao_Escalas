@@ -147,18 +147,18 @@ const ObreirosTab: React.FC<Props> = ({ data, setData }) => {
   return (
     <div className="space-y-6" ref={topRef}>
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-black flex items-center gap-2 text-blue-950 uppercase tracking-tighter">
-          <UserPlus size={24} className="text-blue-600" />
+        <h2 className="text-xl font-black flex items-center gap-2 text-adfare-navy uppercase tracking-tighter">
+          <UserPlus size={24} className="text-adfare-orange" />
           Corpo de Obreiros
         </h2>
         <div className="flex gap-2">
           {data.obreiros.length > 0 && (
-            <button onClick={selectAll} className="p-2.5 text-slate-400 hover:text-blue-600 bg-white border border-slate-100 rounded-xl transition-all shadow-sm">
+            <button onClick={selectAll} className="p-2.5 text-slate-400 hover:text-adfare-orange bg-white border border-slate-100 rounded-xl transition-all shadow-sm">
               {selectedIds.size === data.obreiros.length ? <CheckSquare size={20} /> : <Square size={20} />}
             </button>
           )}
           {!isAdding && (
-            <button onClick={() => setIsAdding(true)} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-all shadow-lg">
+            <button onClick={() => setIsAdding(true)} className="bg-adfare-gradient text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-all shadow-[0_8px_30px_rgb(243,112,33,0.3)]">
               <Plus size={16} /> Novo
             </button>
           )}
@@ -251,8 +251,8 @@ const ObreirosTab: React.FC<Props> = ({ data, setData }) => {
           </div>
 
           <div className="flex gap-3 pt-4">
-            <button onClick={handleSave} className="flex-grow bg-blue-900 text-white py-5 rounded-[24px] font-black flex items-center justify-center gap-2 shadow-2xl uppercase tracking-tighter"><Check size={20} /> {editingId ? 'Salvar Edição' : 'Finalizar Cadastro'}</button>
-            <button onClick={resetForm} className="bg-slate-100 text-slate-400 px-8 py-5 rounded-[24px] font-black"><X size={20} /></button>
+            <button onClick={handleSave} className="flex-grow bg-adfare-gradient text-white py-5 rounded-[24px] font-black flex items-center justify-center gap-2 shadow-[0_8px_30px_rgb(243,112,33,0.3)] uppercase tracking-tighter"><Check size={20} /> {editingId ? 'Salvar Edição' : 'Finalizar Cadastro'}</button>
+            <button onClick={resetForm} className="bg-slate-100 text-slate-400 hover:bg-slate-200 px-8 py-5 rounded-[24px] font-black transition-colors"><X size={20} /></button>
           </div>
         </div>
       )}
@@ -271,7 +271,7 @@ const ObreirosTab: React.FC<Props> = ({ data, setData }) => {
               </div>
               <div className="flex-grow min-w-0">
                 <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mb-0.5">
-                  <span className="text-[8px] font-black bg-blue-900 text-white px-2 py-0.5 rounded-full uppercase shrink-0">{obreiro.role}</span>
+                  <span className="text-[8px] font-black bg-adfare-navy text-white px-2 py-0.5 rounded-full uppercase shrink-0">{obreiro.role}</span>
                   <h3 className="font-black text-slate-900 text-sm uppercase tracking-tighter break-words leading-tight">{obreiro.name}</h3>
                   {obreiro.linkedWorkerId && <div className="text-blue-400 shrink-0" title="Possui Vínculo"><LinkIcon size={12} /></div>}
                 </div>

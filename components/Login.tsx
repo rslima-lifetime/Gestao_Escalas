@@ -105,9 +105,10 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="bg-white max-w-md w-full rounded-[40px] shadow-2xl overflow-hidden border border-slate-100">
-        <div className="bg-blue-950 p-8 text-white text-center">
-          <h1 className="text-3xl font-black tracking-tighter italic uppercase">ADFARE</h1>
-          <p className="text-[10px] font-black text-blue-400 tracking-[0.3em] uppercase mt-2">Gestão de Escala</p>
+        <div className="bg-slate-100 p-8 text-adfare-navy text-center flex flex-col items-center justify-center relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-adfare-gradient"></div>
+          <img src="/adfare_logo.png" alt="ADFARE Logo" className="w-32 h-auto mb-2 drop-shadow-md mix-blend-multiply" />
+          <p className="text-[10px] font-black text-slate-500 tracking-[0.3em] uppercase mt-2">Gestão de Escala</p>
         </div>
         
         <div className="p-8">
@@ -220,7 +221,7 @@ const Login: React.FC = () => {
             <button 
               type="submit" 
               disabled={loading}
-              className="w-full bg-blue-600 text-white p-4 rounded-3xl font-black uppercase tracking-widest flex justify-center items-center gap-2 hover:bg-blue-700 active:scale-95 transition-all shadow-xl disabled:opacity-50 mt-4"
+              className="w-full bg-adfare-gradient text-white p-4 rounded-3xl font-black uppercase tracking-widest flex justify-center items-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-[0_8px_30px_rgb(243,112,33,0.3)] disabled:opacity-50 mt-4"
             >
               {loading ? 'Aguarde...' : isLogin ? <><LogIn size={18} /> Entrar</> : <><UserPlus size={18} /> Criar Conta</>}
             </button>
@@ -230,7 +231,7 @@ const Login: React.FC = () => {
             <button 
               type="button"
               onClick={handleToggleMode}
-              className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-blue-600 transition-colors"
+              className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-adfare-orange transition-colors"
             >
               {isLogin ? 'Não tem conta? Crie uma' : 'Já tem conta? Fazer Login'}
             </button>

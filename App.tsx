@@ -290,11 +290,16 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="bg-blue-950 text-white p-4 shadow-md no-print sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <div className="flex flex-col">
-            <h1 className="text-xl font-black tracking-tighter italic uppercase leading-none">ADFARE</h1>
-            <span className="text-[9px] font-black text-blue-400 tracking-[0.3em] uppercase mt-1">Gestão de Escala</span>
+      <header className="bg-adfare-navy text-white px-4 py-3 shadow-lg no-print sticky top-0 z-50 overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-adfare-gradient"></div>
+        <div className="max-w-4xl mx-auto flex justify-between items-center relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="bg-white/10 p-1 rounded-xl backdrop-blur-sm shadow-inner">
+               <img src="/adfare_logo.png" alt="ADFARE" className="h-10 w-auto drop-shadow-md object-contain" />
+            </div>
+            <div className="flex flex-col hidden sm:flex">
+              <span className="text-[9px] font-black text-slate-300 tracking-[0.3em] uppercase mt-1 drop-shadow-sm">Gestão de Escala</span>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-[14px]" title={syncStatus === 'syncing' ? 'Sincronizando...' : syncStatus === 'synced' ? 'Salvo na Nuvem' : 'Erro ao Salvar'}>
@@ -435,7 +440,7 @@ const App: React.FC = () => {
             <button 
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 py-4 text-[10px] font-black tracking-widest border-b-4 transition-all flex flex-col items-center gap-1.5 ${activeTab === tab.id ? 'border-blue-900 text-blue-900 bg-blue-50/30' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+              className={`flex-1 py-4 text-[10px] font-black tracking-widest border-b-4 transition-all flex flex-col items-center gap-1.5 ${activeTab === tab.id ? 'border-adfare-orange text-adfare-orange bg-slate-50/50' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
             >
               <tab.icon size={20} />
               {tab.label}

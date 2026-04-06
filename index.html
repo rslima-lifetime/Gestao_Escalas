@@ -6,6 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ADFARE - Mural de Escala</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'adfare-navy': '#252830',
+              'adfare-red': '#C12026',
+              'adfare-orange': '#F37021',
+              'adfare-yellow': '#FDB913',
+            }
+          }
+        }
+      }
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
@@ -20,6 +34,15 @@
       @media print {
         .no-print { display: none !important; }
         body { margin: 0; padding: 0; background-color: white !important; }
+      }
+
+      .bg-adfare-gradient {
+        background: linear-gradient(135deg, #C12026 0%, #F37021 50%, #FDB913 100%);
+      }
+      .text-adfare-gradient {
+        background: linear-gradient(135deg, #C12026 0%, #F37021 50%, #FDB913 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
       }
 
       /* Largura exata para A4 Portrait em 96dpi para evitar cortes laterais */
