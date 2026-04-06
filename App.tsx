@@ -72,51 +72,60 @@ const App: React.FC = () => {
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         
+        let legacyDataToMigrate: any = null;
+        
         if (userDoc.exists()) {
-          const cloudData = userDoc.data() as AppDataV1 & { cargo?: string, nome?: string, photoURL?: string };
-          
+          const userData = userDoc.data();
           setUserProfile({
-            cargo: cloudData.cargo,
-            nome: cloudData.nome || user.displayName || 'Usuário',
-            photoURL: cloudData.photoURL || user.photoURL || ''
+            cargo: userData.cargo,
+            nome: userData.nome || user.displayName || 'Usuário',
+            photoURL: userData.photoURL || user.photoURL || ''
           });
-
-          // Prevenir que campos de perfil contaminem os dados do App (Evita reescrever)
-          const { cargo, nome, photoURL, email, createdAt, ...appDataOnly } = cloudData;
           
-          const savedObreiros = appDataOnly.obreiros || [];
+          // Captura dados legados para migração, se houver
+          if (userData.obreiros) {
+             const { cargo, nome, photoURL, email, createdAt, ...appDataOnly } = userData as any;
+             legacyDataToMigrate = appDataOnly;
+          }
+        }
+        
+        // 2. Carrega Dados Globais da Igreja
+        const globalDoc = await getDoc(doc(db, 'ministerio', 'adfare_data'));
+        
+        if (globalDoc.exists()) {
+          const cloudData = globalDoc.data() as AppDataV1;
+          const savedObreiros = cloudData.obreiros || [];
           const missingObreiros = INITIAL_OBREIROS.filter(
             initOb => !savedObreiros.some((savedOb: Obreiro) => savedOb.id === initOb.id)
           );
           
           setData({
-             ...appDataOnly,
+             ...cloudData,
              obreiros: [...savedObreiros, ...missingObreiros],
-             savedScales: appDataOnly.savedScales || []
+             savedScales: cloudData.savedScales || []
+          });
+        } else if (legacyDataToMigrate) {
+          // Faz a migração automática copiando os dados antigos do Pastor pro Global!
+          const savedObreiros = legacyDataToMigrate.obreiros || [];
+          const missingObreiros = INITIAL_OBREIROS.filter(
+            initOb => !savedObreiros.some((savedOb: Obreiro) => savedOb.id === initOb.id)
+          );
+          setData({
+             ...legacyDataToMigrate,
+             obreiros: [...savedObreiros, ...missingObreiros],
+             savedScales: legacyDataToMigrate.savedScales || []
           });
         } else {
-          // Migração do LocalStorage para Nuvem no primeiro acesso
-          const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-          let initialData = { ...data };
-
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            const savedObreiros = parsed.obreiros || [];
-            const missingObreiros = INITIAL_OBREIROS.filter(
-              initOb => !savedObreiros.some((savedOb: Obreiro) => savedOb.id === initOb.id)
-            );
-            
-            initialData = {
-              ...parsed,
-               obreiros: [...savedObreiros, ...missingObreiros],
-               savedScales: parsed.savedScales || []
-            };
-            alert('Dados locais encontrados! Estamos migrando sua escala antiga para a sua nova conta na nuvem.');
-            localStorage.removeItem(LOCAL_STORAGE_KEY);
+          // Migração do LocalStorage para Nuvem no primeiro acesso extremo
+          const localSaved = localStorage.getItem(LOCAL_STORAGE_KEY);
+          if (localSaved) {
+            setData(JSON.parse(localSaved));
           }
-          
-          setData(initialData);
-          await setDoc(doc(db, 'users', user.uid), initialData);
+        }
+        
+        // Se usuário for apenas Membro, direciona pro Mural pra não ficar preso na página bloqueada
+        if (userDoc.exists() && userDoc.data().cargo === 'Membro') {
+           setActiveTab('relatorio');
         }
       } catch (e) {
         console.error("Erro ao carregar dados", e);
@@ -149,10 +158,16 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!user || !dataLoaded) return;
     
+    // Ignorar sincronização global se for apenas membro (Membros não podem editar estruturalmente o DB)
+    if (userProfile?.cargo === 'Membro') {
+        setSyncStatus('synced');
+        return;
+    }
+    
     const saveToCloud = async () => {
       setSyncStatus('syncing');
       try {
-        await setDoc(doc(db, 'users', user.uid), data, { merge: true });
+        await setDoc(doc(db, 'ministerio', 'adfare_data'), data, { merge: true });
         setSyncStatus('synced');
       } catch (err) {
         console.error("Erro ao salvar", err);
@@ -162,7 +177,7 @@ const App: React.FC = () => {
     
     const timer = setTimeout(saveToCloud, 1500); // Debounce
     return () => clearTimeout(timer);
-  }, [data, user, dataLoaded]);
+  }, [data, user, dataLoaded, userProfile]);
 
   if (!user) {
     return <Login />;
@@ -409,8 +424,11 @@ const App: React.FC = () => {
       <nav className="bg-white border-b no-print sticky top-[68px] z-40 shadow-sm overflow-x-auto">
         <div className="max-w-4xl mx-auto flex min-w-max md:min-w-0">
           {[
-            { id: 'obreiros', label: 'OBREIROS', icon: UserPlus },
-            { id: 'mes', label: 'GERENCIAR', icon: CalendarDays },
+            // Mostra abas gerenciais apenas para não-Membros.
+            ...(userProfile?.cargo && userProfile.cargo !== 'Membro' ? [
+                { id: 'obreiros', label: 'OBREIROS', icon: UserPlus },
+                { id: 'mes', label: 'GERENCIAR', icon: CalendarDays },
+            ] : []),
             { id: 'relatorio', label: 'MURAL', icon: ClipboardList },
             ...(userProfile?.cargo === 'Pastor' ? [{ id: 'usuarios', label: 'ACESSOS', icon: Shield }] : [])
           ].map(tab => (
@@ -427,8 +445,8 @@ const App: React.FC = () => {
       </nav>
 
       <main className="flex-grow max-w-4xl mx-auto w-full p-4 pb-24">
-        {activeTab === 'obreiros' && <ObreirosTab data={data} setData={setData} />}
-        {activeTab === 'mes' && <GerenciarMesTab data={data} setData={setData} />}
+        {activeTab === 'obreiros' && userProfile?.cargo && userProfile.cargo !== 'Membro' && <ObreirosTab data={data} setData={setData} />}
+        {activeTab === 'mes' && userProfile?.cargo && userProfile.cargo !== 'Membro' && <GerenciarMesTab data={data} setData={setData} />}
         {activeTab === 'relatorio' && <RelatorioTab data={data} setData={setData} />}
         {activeTab === 'usuarios' && userProfile?.cargo === 'Pastor' && <GestaoAcessosTab />}
       </main>
