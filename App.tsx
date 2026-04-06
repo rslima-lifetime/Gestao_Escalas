@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, CalendarDays, ClipboardList, Database, Download, Upload, Trash2, Save, FolderOpen, X, History, Cloud, CloudOff, LogOut } from 'lucide-react';
+import { UserPlus, CalendarDays, ClipboardList, Database, Download, Upload, Trash2, Save, FolderOpen, X, History, Cloud, CloudOff, LogOut, User, ChevronDown, Edit2 } from 'lucide-react';
+import { updateProfile } from 'firebase/auth';
 import { AppDataV1, Obreiro, SavedScale } from './types';
 import ObreirosTab from './components/ObreirosTab';
 import GerenciarMesTab from './components/GerenciarMesTab';
@@ -53,6 +54,15 @@ const App: React.FC = () => {
   const [showLibrary, setShowLibrary] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('synced');
+  const [userProfile, setUserProfile] = useState<{ cargo?: string, nome?: string, photoURL?: string } | null>(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  
+  // Edit profile form state
+  const [editNome, setEditNome] = useState('');
+  const [editCargo, setEditCargo] = useState('Pastor');
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
 
   useEffect(() => {
     if (!user) return;
@@ -62,8 +72,14 @@ const App: React.FC = () => {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         
         if (userDoc.exists()) {
-          const cloudData = userDoc.data() as AppDataV1;
+          const cloudData = userDoc.data() as AppDataV1 & { cargo?: string, nome?: string, photoURL?: string };
           
+          setUserProfile({
+            cargo: cloudData.cargo,
+            nome: cloudData.nome || user.displayName || 'Usuário',
+            photoURL: cloudData.photoURL || user.photoURL || ''
+          });
+
           const savedObreiros = cloudData.obreiros || [];
           const missingObreiros = INITIAL_OBREIROS.filter(
             initOb => !savedObreiros.some((savedOb: Obreiro) => savedOb.id === initOb.id)
@@ -108,6 +124,23 @@ const App: React.FC = () => {
     loadCloudData();
   }, [user]);
 
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setIsUpdatingProfile(true);
+    try {
+      await updateProfile(user, { displayName: editNome });
+      await setDoc(doc(db, 'users', user.uid), { nome: editNome, cargo: editCargo }, { merge: true });
+      setUserProfile(prev => ({ ...prev, nome: editNome, cargo: editCargo }));
+      setShowEditProfile(false);
+    } catch (err) {
+      console.error("Erro ao atualizar perfil", err);
+      alert("Houve um erro ao atualizar os dados do perfil.");
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
   // Sincronização automática para a nuvem
   useEffect(() => {
     if (!user || !dataLoaded) return;
@@ -115,7 +148,7 @@ const App: React.FC = () => {
     const saveToCloud = async () => {
       setSyncStatus('syncing');
       try {
-        await setDoc(doc(db, 'users', user.uid), data);
+        await setDoc(doc(db, 'users', user.uid), data, { merge: true });
         setSyncStatus('synced');
       } catch (err) {
         console.error("Erro ao salvar", err);
@@ -244,16 +277,76 @@ const App: React.FC = () => {
             <h1 className="text-xl font-black tracking-tighter italic uppercase leading-none">ADFARE</h1>
             <span className="text-[9px] font-black text-blue-400 tracking-[0.3em] uppercase mt-1">Gestão de Escala</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-900/50 rounded-[14px] border border-blue-800" title={syncStatus === 'syncing' ? 'Sincronizando...' : syncStatus === 'synced' ? 'Salvo na Nuvem' : 'Erro ao Salvar'}>
-              {syncStatus === 'syncing' ? <Cloud className="animate-pulse text-blue-300" size={14} /> : syncStatus === 'synced' ? <Cloud className="text-emerald-400" size={14} /> : <CloudOff className="text-rose-400" size={14} />}
-              <span className="text-[9px] font-bold text-blue-200 truncate max-w-[80px] sm:max-w-full hidden sm:inline-block">{user.email}</span>
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-[14px]" title={syncStatus === 'syncing' ? 'Sincronizando...' : syncStatus === 'synced' ? 'Salvo na Nuvem' : 'Erro ao Salvar'}>
+              {syncStatus === 'syncing' ? <Cloud className="animate-pulse text-blue-300" size={16} /> : syncStatus === 'synced' ? <Cloud className="text-emerald-400" size={16} /> : <CloudOff className="text-rose-400" size={16} />}
+            </div>
+
+            {/* User Profile Menu */}
+            <div className="relative">
+              <button 
+                onClick={() => { setShowProfileMenu(!showProfileMenu); setShowBackupMenu(false); }}
+                className={`flex items-center gap-3 pr-3 py-1 pl-1 rounded-full transition-all border ${showProfileMenu ? 'bg-blue-900 border-blue-700 shadow-xl' : 'bg-blue-900/40 border-blue-800 hover:bg-blue-800'}`}
+              >
+                {userProfile?.photoURL ? (
+                  <img src={userProfile.photoURL} alt="Perfil" className="w-8 h-8 rounded-full object-cover border-2 border-blue-400" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-blue-700 flex items-center justify-center text-blue-200 border-2 border-blue-500">
+                    <User size={16} />
+                  </div>
+                )}
+                <div className="flex flex-col items-start hidden sm:flex max-w-[120px]">
+                  <span className="text-xs font-black text-white truncate w-full">{userProfile?.nome || user.displayName || 'Usuário'}</span>
+                  <span className="text-[9px] font-bold text-blue-300 uppercase tracking-widest truncate w-full">{userProfile?.cargo || 'Membro'}</span>
+                </div>
+                <ChevronDown size={14} className="text-blue-300 ml-1 hidden sm:block" />
+              </button>
+
+              {showProfileMenu && (
+                <div className="absolute right-0 mt-3 w-64 bg-white rounded-[28px] shadow-2xl py-3 text-gray-800 border border-slate-100 animate-in fade-in slide-in-from-top-2 overflow-hidden z-50">
+                  <div className="px-5 py-3 border-b border-slate-50 mb-2 flex items-center gap-3">
+                     {userProfile?.photoURL ? (
+                        <img src={userProfile.photoURL} alt="Perfil" className="w-12 h-12 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
+                          <User size={24} />
+                        </div>
+                      )}
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="text-sm font-black text-slate-800 truncate">{userProfile?.nome || user.displayName || 'Usuário'}</span>
+                        <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest truncate">{userProfile?.cargo || 'Membro'}</span>
+                        <span className="text-[10px] text-slate-400 truncate mt-0.5">{user.email}</span>
+                      </div>
+                  </div>
+                  
+                  <button onClick={() => {
+                    setEditNome(userProfile?.nome || user.displayName || '');
+                    setEditCargo(userProfile?.cargo || 'Membro');
+                    setShowEditProfile(true);
+                    setShowProfileMenu(false);
+                  }} className="w-full text-left px-5 py-3 hover:bg-blue-50 flex items-center gap-3 group mt-1">
+                    <div className="bg-blue-100 p-2 rounded-xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                      <Edit2 size={16} />
+                    </div>
+                    <span className="text-sm font-black uppercase text-slate-700 tracking-tighter">Editar Perfil</span>
+                  </button>
+
+                  <div className="border-t border-slate-50 my-1"></div>
+
+                  <button onClick={handleLogout} className="w-full text-left px-5 py-3 hover:bg-rose-50 text-rose-600 flex items-center gap-3 group">
+                    <div className="bg-rose-100 p-2 rounded-xl text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                      <LogOut size={16} />
+                    </div>
+                    <span className="text-sm font-black uppercase tracking-tighter">Sair da Conta</span>
+                  </button>
+                </div>
+              )}
             </div>
           
             <div className="relative">
               <button 
-                onClick={() => setShowBackupMenu(!showBackupMenu)} 
-                className={`p-2.5 rounded-2xl transition-all ${showBackupMenu ? 'bg-blue-600 shadow-lg' : 'hover:bg-blue-900'}`}
+                onClick={() => { setShowBackupMenu(!showBackupMenu); setShowProfileMenu(false); }} 
+                className={`p-2.5 rounded-2xl transition-all ${showBackupMenu ? 'bg-blue-600 shadow-lg' : 'bg-blue-900/60 hover:bg-blue-800'}`}
               >
                 <Database size={22} />
               </button>
@@ -296,20 +389,11 @@ const App: React.FC = () => {
 
                   <div className="border-t border-slate-50 my-2"></div>
 
-                  <button onClick={handleResetBalances} className="w-full text-left px-5 py-3 hover:bg-rose-50 text-rose-600 flex items-center gap-3 group">
+                  <button onClick={handleResetBalances} className="w-full text-left px-5 py-3 hover:bg-rose-50 text-rose-600 flex items-center gap-3 group mb-1">
                     <div className="bg-rose-100 p-2 rounded-xl text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
                       <Trash2 size={16} />
                     </div>
                     <span className="text-sm font-black uppercase tracking-tighter">Zerar Saldos Ativos</span>
-                  </button>
-                  
-                  <div className="border-t border-slate-50 my-2"></div>
-
-                  <button onClick={handleLogout} className="w-full text-left px-5 py-3 hover:bg-red-50 text-red-600 flex items-center gap-3 group">
-                    <div className="bg-red-100 p-2 rounded-xl text-red-600 group-hover:bg-red-600 group-hover:text-white transition-colors">
-                      <LogOut size={16} />
-                    </div>
-                    <span className="text-sm font-black uppercase tracking-tighter">Sair da Conta</span>
                   </button>
                 </div>
               )}
@@ -406,6 +490,52 @@ const App: React.FC = () => {
                 Fechar Biblioteca
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showEditProfile && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-[40px] shadow-2xl p-8 animate-in zoom-in-95">
+             <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-black uppercase tracking-tighter">Editar Perfil</h3>
+                <button onClick={() => setShowEditProfile(false)} className="text-slate-400 hover:bg-slate-100 p-2 rounded-full"><X size={20} /></button>
+             </div>
+
+             <form onSubmit={handleSaveProfile} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2">Nome de Exibição</label>
+                  <input 
+                    type="text" 
+                    value={editNome}
+                    onChange={(e) => setEditNome(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-100 p-4 rounded-3xl outline-none focus:ring-4 focus:ring-blue-100 font-bold"
+                    placeholder="Seu Nome"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2">Seu Cargo Ministerial</label>
+                  <select 
+                    value={editCargo}
+                    onChange={(e) => setEditCargo(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-100 p-4 rounded-3xl outline-none focus:ring-4 focus:ring-blue-100 font-bold"
+                    required
+                  >
+                    {["Pastor", "Evangelista", "Missionário/Missionária", "Presbítero", "Diácono/Diaconisa", "Obreiro/Obreira", "Membro"].map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <button 
+                  type="submit" 
+                  disabled={isUpdatingProfile}
+                  className="w-full bg-blue-600 text-white p-4 rounded-3xl font-black uppercase tracking-widest mt-6 hover:bg-blue-700 transition"
+                >
+                  {isUpdatingProfile ? 'Salvando...' : 'Salvar Alterações'}
+                </button>
+             </form>
           </div>
         </div>
       )}
