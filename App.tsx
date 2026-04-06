@@ -1,11 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
-import { UserPlus, CalendarDays, ClipboardList, Database, Download, Upload, Trash2, Save, FolderOpen, X, History } from 'lucide-react';
+import { UserPlus, CalendarDays, ClipboardList, Database, Download, Upload, Trash2, Save, FolderOpen, X, History, Cloud, CloudOff, LogOut } from 'lucide-react';
 import { AppDataV1, Obreiro, SavedScale } from './types';
 import ObreirosTab from './components/ObreirosTab';
 import GerenciarMesTab from './components/GerenciarMesTab';
 import RelatorioTab from './components/RelatorioTab';
 import { MONTHS } from './constants';
+import { useAuth } from './context/AuthContext';
+import Login from './components/Login';
+import { db, auth } from './lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
 
 const LOCAL_STORAGE_KEY = 'adfare_system_v1';
 
@@ -34,6 +38,8 @@ const INITIAL_OBREIROS: Obreiro[] = [
 ];
 
 const App: React.FC = () => {
+  const { user } = useAuth();
+
   const [activeTab, setActiveTab] = useState<'obreiros' | 'mes' | 'relatorio'>('obreiros');
   const [data, setData] = useState<AppDataV1>({
     obreiros: INITIAL_OBREIROS,
@@ -42,36 +48,97 @@ const App: React.FC = () => {
     currentYear: new Date().getFullYear(),
     savedScales: []
   });
+  
   const [showBackupMenu, setShowBackupMenu] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('synced');
 
   useEffect(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (saved) {
+    if (!user) return;
+    
+    const loadCloudData = async () => {
       try {
-        const parsed = JSON.parse(saved);
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
         
-        const savedObreiros = parsed.obreiros || [];
-        const missingObreiros = INITIAL_OBREIROS.filter(
-          initOb => !savedObreiros.some((savedOb: Obreiro) => savedOb.id === initOb.id)
-        );
-        const mergedObreiros = [...savedObreiros, ...missingObreiros];
+        if (userDoc.exists()) {
+          const cloudData = userDoc.data() as AppDataV1;
+          
+          const savedObreiros = cloudData.obreiros || [];
+          const missingObreiros = INITIAL_OBREIROS.filter(
+            initOb => !savedObreiros.some((savedOb: Obreiro) => savedOb.id === initOb.id)
+          );
+          
+          setData({
+             ...cloudData,
+             obreiros: [...savedObreiros, ...missingObreiros],
+             savedScales: cloudData.savedScales || []
+          });
+        } else {
+          // Migração do LocalStorage para Nuvem no primeiro acesso
+          const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+          let initialData = { ...data };
 
-        setData(prev => ({
-          ...prev,
-          ...parsed,
-          obreiros: mergedObreiros,
-          savedScales: parsed.savedScales || []
-        }));
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            const savedObreiros = parsed.obreiros || [];
+            const missingObreiros = INITIAL_OBREIROS.filter(
+              initOb => !savedObreiros.some((savedOb: Obreiro) => savedOb.id === initOb.id)
+            );
+            
+            initialData = {
+              ...parsed,
+               obreiros: [...savedObreiros, ...missingObreiros],
+               savedScales: parsed.savedScales || []
+            };
+            alert('Dados locais encontrados! Estamos migrando sua escala antiga para a sua nova conta na nuvem.');
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
+          }
+          
+          setData(initialData);
+          await setDoc(doc(db, 'users', user.uid), initialData);
+        }
       } catch (e) {
         console.error("Erro ao carregar dados", e);
+      } finally {
+        setDataLoaded(true);
       }
-    }
-  }, []);
+    };
+    
+    loadCloudData();
+  }, [user]);
 
+  // Sincronização automática para a nuvem
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
-  }, [data]);
+    if (!user || !dataLoaded) return;
+    
+    const saveToCloud = async () => {
+      setSyncStatus('syncing');
+      try {
+        await setDoc(doc(db, 'users', user.uid), data);
+        setSyncStatus('synced');
+      } catch (err) {
+        console.error("Erro ao salvar", err);
+        setSyncStatus('error');
+      }
+    };
+    
+    const timer = setTimeout(saveToCloud, 1500); // Debounce
+    return () => clearTimeout(timer);
+  }, [data, user, dataLoaded]);
+
+  if (!user) {
+    return <Login />;
+  }
+
+  if (!dataLoaded) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
+        <Cloud className="text-blue-500 animate-bounce" size={48} />
+        <p className="text-sm font-black uppercase text-slate-400 tracking-widest animate-pulse">Sincronizando Banco de Dados...</p>
+      </div>
+    );
+  }
 
   const handleExportBackup = () => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -93,7 +160,7 @@ const App: React.FC = () => {
         const importedData = JSON.parse(event.target?.result as string);
         if (importedData.obreiros) {
           setData(importedData);
-          alert("Backup importado com sucesso! Tudo foi restaurado.");
+          alert("Backup importado com sucesso! Seus dados foram restaurados para a nuvem.");
         }
       } catch (e) {
         alert("Erro ao importar backup. Verifique o arquivo.");
@@ -129,7 +196,7 @@ const App: React.FC = () => {
       month: data.currentMonth,
       year: data.currentYear,
       cultos: JSON.parse(JSON.stringify(data.cultos)),
-      obreiros: JSON.parse(JSON.stringify(data.obreiros)) // Snapshot dos obreiros
+      obreiros: JSON.parse(JSON.stringify(data.obreiros))
     };
 
     setData(prev => ({
@@ -147,7 +214,7 @@ const App: React.FC = () => {
         currentMonth: scale.month,
         currentYear: scale.year,
         cultos: JSON.parse(JSON.stringify(scale.cultos)),
-        obreiros: JSON.parse(JSON.stringify(scale.obreiros || prev.obreiros)) // Restaura obreiros se existirem no backup
+        obreiros: JSON.parse(JSON.stringify(scale.obreiros || prev.obreiros))
       }));
       setShowLibrary(false);
       setActiveTab('mes');
@@ -163,6 +230,12 @@ const App: React.FC = () => {
     }
   };
 
+  const handleLogout = async () => {
+    if (confirm("Deseja desconectar sua conta?")) {
+      await signOut(auth);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <header className="bg-blue-950 text-white p-4 shadow-md no-print sticky top-0 z-50">
@@ -171,60 +244,76 @@ const App: React.FC = () => {
             <h1 className="text-xl font-black tracking-tighter italic uppercase leading-none">ADFARE</h1>
             <span className="text-[9px] font-black text-blue-400 tracking-[0.3em] uppercase mt-1">Gestão de Escala</span>
           </div>
-          <div className="relative">
-            <button 
-              onClick={() => setShowBackupMenu(!showBackupMenu)} 
-              className={`p-2.5 rounded-2xl transition-all ${showBackupMenu ? 'bg-blue-600 shadow-lg' : 'hover:bg-blue-900'}`}
-            >
-              <Database size={22} />
-            </button>
-            {showBackupMenu && (
-              <div className="absolute right-0 mt-3 w-64 bg-white rounded-[28px] shadow-2xl py-3 text-gray-800 border border-slate-100 animate-in fade-in slide-in-from-top-2 overflow-hidden">
-                <div className="px-4 py-2 border-b border-slate-50 mb-2">
-                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Ações de Dados</span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-900/50 rounded-[14px] border border-blue-800" title={syncStatus === 'syncing' ? 'Sincronizando...' : syncStatus === 'synced' ? 'Salvo na Nuvem' : 'Erro ao Salvar'}>
+              {syncStatus === 'syncing' ? <Cloud className="animate-pulse text-blue-300" size={14} /> : syncStatus === 'synced' ? <Cloud className="text-emerald-400" size={14} /> : <CloudOff className="text-rose-400" size={14} />}
+              <span className="text-[9px] font-bold text-blue-200 truncate max-w-[80px] sm:max-w-full hidden sm:inline-block">{user.email}</span>
+            </div>
+          
+            <div className="relative">
+              <button 
+                onClick={() => setShowBackupMenu(!showBackupMenu)} 
+                className={`p-2.5 rounded-2xl transition-all ${showBackupMenu ? 'bg-blue-600 shadow-lg' : 'hover:bg-blue-900'}`}
+              >
+                <Database size={22} />
+              </button>
+              {showBackupMenu && (
+                <div className="absolute right-0 mt-3 w-64 bg-white rounded-[28px] shadow-2xl py-3 text-gray-800 border border-slate-100 animate-in fade-in slide-in-from-top-2 overflow-hidden">
+                  <div className="px-4 py-2 border-b border-slate-50 mb-2">
+                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Ações de Dados</span>
+                  </div>
+                  
+                  <button onClick={saveCurrentScaleToLibrary} className="w-full text-left px-5 py-3 hover:bg-blue-50 flex items-center gap-3 group">
+                    <div className="bg-blue-100 p-2 rounded-xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                      <Save size={16} />
+                    </div>
+                    <span className="text-sm font-black text-slate-700">Salvar Snapshot Completo</span>
+                  </button>
+
+                  <button onClick={() => { setShowLibrary(true); setShowBackupMenu(false); }} className="w-full text-left px-5 py-3 hover:bg-emerald-50 flex items-center gap-3 group">
+                    <div className="bg-emerald-100 p-2 rounded-xl text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                      <History size={16} />
+                    </div>
+                    <span className="text-sm font-black text-slate-700">Biblioteca de Salvos</span>
+                  </button>
+
+                  <div className="border-t border-slate-50 my-2"></div>
+
+                  <button onClick={handleExportBackup} className="w-full text-left px-5 py-3 hover:bg-slate-50 flex items-center gap-3 group">
+                    <div className="bg-slate-100 p-2 rounded-xl text-slate-600">
+                      <Download size={16} />
+                    </div>
+                    <span className="text-sm font-bold text-slate-600">Exportar Backup</span>
+                  </button>
+
+                  <label className="w-full text-left px-5 py-3 hover:bg-slate-50 flex items-center gap-3 cursor-pointer group">
+                    <div className="bg-slate-100 p-2 rounded-xl text-slate-600">
+                      <Upload size={16} />
+                    </div>
+                    <span className="text-sm font-bold text-slate-600">Importar Backup</span>
+                    <input type="file" className="hidden" accept=".json" onChange={handleImportBackup} />
+                  </label>
+
+                  <div className="border-t border-slate-50 my-2"></div>
+
+                  <button onClick={handleResetBalances} className="w-full text-left px-5 py-3 hover:bg-rose-50 text-rose-600 flex items-center gap-3 group">
+                    <div className="bg-rose-100 p-2 rounded-xl text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                      <Trash2 size={16} />
+                    </div>
+                    <span className="text-sm font-black uppercase tracking-tighter">Zerar Saldos Ativos</span>
+                  </button>
+                  
+                  <div className="border-t border-slate-50 my-2"></div>
+
+                  <button onClick={handleLogout} className="w-full text-left px-5 py-3 hover:bg-red-50 text-red-600 flex items-center gap-3 group">
+                    <div className="bg-red-100 p-2 rounded-xl text-red-600 group-hover:bg-red-600 group-hover:text-white transition-colors">
+                      <LogOut size={16} />
+                    </div>
+                    <span className="text-sm font-black uppercase tracking-tighter">Sair da Conta</span>
+                  </button>
                 </div>
-                
-                <button onClick={saveCurrentScaleToLibrary} className="w-full text-left px-5 py-3 hover:bg-blue-50 flex items-center gap-3 group">
-                  <div className="bg-blue-100 p-2 rounded-xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                    <Save size={16} />
-                  </div>
-                  <span className="text-sm font-black text-slate-700">Salvar Snapshot Completo</span>
-                </button>
-
-                <button onClick={() => { setShowLibrary(true); setShowBackupMenu(false); }} className="w-full text-left px-5 py-3 hover:bg-emerald-50 flex items-center gap-3 group">
-                  <div className="bg-emerald-100 p-2 rounded-xl text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                    <History size={16} />
-                  </div>
-                  <span className="text-sm font-black text-slate-700">Biblioteca de Salvos</span>
-                </button>
-
-                <div className="border-t border-slate-50 my-2"></div>
-
-                <button onClick={handleExportBackup} className="w-full text-left px-5 py-3 hover:bg-slate-50 flex items-center gap-3 group">
-                  <div className="bg-slate-100 p-2 rounded-xl text-slate-600">
-                    <Download size={16} />
-                  </div>
-                  <span className="text-sm font-bold text-slate-600">Exportar Backup Total</span>
-                </button>
-
-                <label className="w-full text-left px-5 py-3 hover:bg-slate-50 flex items-center gap-3 cursor-pointer group">
-                  <div className="bg-slate-100 p-2 rounded-xl text-slate-600">
-                    <Upload size={16} />
-                  </div>
-                  <span className="text-sm font-bold text-slate-600">Importar Backup</span>
-                  <input type="file" className="hidden" accept=".json" onChange={handleImportBackup} />
-                </label>
-
-                <div className="border-t border-slate-50 my-2"></div>
-
-                <button onClick={handleResetBalances} className="w-full text-left px-5 py-3 hover:bg-rose-50 text-rose-600 flex items-center gap-3 group">
-                  <div className="bg-rose-100 p-2 rounded-xl text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
-                    <Trash2 size={16} />
-                  </div>
-                  <span className="text-sm font-black uppercase tracking-tighter">Zerar Saldos Ativos</span>
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </header>
