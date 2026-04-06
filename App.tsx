@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, CalendarDays, ClipboardList, Database, Download, Upload, Trash2, Save, FolderOpen, X, History, Cloud, CloudOff, LogOut, User, ChevronDown, Edit2 } from 'lucide-react';
+import { UserPlus, CalendarDays, ClipboardList, Database, Download, Upload, Trash2, Save, FolderOpen, X, History, Cloud, CloudOff, LogOut, User, ChevronDown, Edit2, Shield } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { AppDataV1, Obreiro, SavedScale } from './types';
 import ObreirosTab from './components/ObreirosTab';
 import GerenciarMesTab from './components/GerenciarMesTab';
 import RelatorioTab from './components/RelatorioTab';
+import GestaoAcessosTab from './components/GestaoAcessosTab';
 import { MONTHS } from './constants';
 import { useAuth } from './context/AuthContext';
 import Login from './components/Login';
@@ -41,7 +42,7 @@ const INITIAL_OBREIROS: Obreiro[] = [
 const App: React.FC = () => {
   const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'obreiros' | 'mes' | 'relatorio'>('obreiros');
+  const [activeTab, setActiveTab] = useState<'obreiros' | 'mes' | 'relatorio' | 'usuarios'>('obreiros');
   const [data, setData] = useState<AppDataV1>({
     obreiros: INITIAL_OBREIROS,
     cultos: [],
@@ -402,12 +403,13 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <nav className="bg-white border-b no-print sticky top-[68px] z-40 shadow-sm">
-        <div className="max-w-4xl mx-auto flex">
+      <nav className="bg-white border-b no-print sticky top-[68px] z-40 shadow-sm overflow-x-auto">
+        <div className="max-w-4xl mx-auto flex min-w-max md:min-w-0">
           {[
             { id: 'obreiros', label: 'OBREIROS', icon: UserPlus },
             { id: 'mes', label: 'GERENCIAR', icon: CalendarDays },
-            { id: 'relatorio', label: 'MURAL', icon: ClipboardList }
+            { id: 'relatorio', label: 'MURAL', icon: ClipboardList },
+            ...(userProfile?.cargo === 'Pastor' ? [{ id: 'usuarios', label: 'ACESSOS', icon: Shield }] : [])
           ].map(tab => (
             <button 
               key={tab.id}
@@ -425,6 +427,7 @@ const App: React.FC = () => {
         {activeTab === 'obreiros' && <ObreirosTab data={data} setData={setData} />}
         {activeTab === 'mes' && <GerenciarMesTab data={data} setData={setData} />}
         {activeTab === 'relatorio' && <RelatorioTab data={data} setData={setData} />}
+        {activeTab === 'usuarios' && userProfile?.cargo === 'Pastor' && <GestaoAcessosTab />}
       </main>
 
       {showLibrary && (
