@@ -81,15 +81,18 @@ const App: React.FC = () => {
             photoURL: cloudData.photoURL || user.photoURL || ''
           });
 
-          const savedObreiros = cloudData.obreiros || [];
+          // Prevenir que campos de perfil contaminem os dados do App (Evita reescrever)
+          const { cargo, nome, photoURL, email, createdAt, ...appDataOnly } = cloudData;
+          
+          const savedObreiros = appDataOnly.obreiros || [];
           const missingObreiros = INITIAL_OBREIROS.filter(
             initOb => !savedObreiros.some((savedOb: Obreiro) => savedOb.id === initOb.id)
           );
           
           setData({
-             ...cloudData,
+             ...appDataOnly,
              obreiros: [...savedObreiros, ...missingObreiros],
-             savedScales: cloudData.savedScales || []
+             savedScales: appDataOnly.savedScales || []
           });
         } else {
           // Migração do LocalStorage para Nuvem no primeiro acesso

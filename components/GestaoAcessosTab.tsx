@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth as primaryAuth } from '../lib/firebase';
 import { collection, getDocs, doc, deleteDoc, setDoc } from 'firebase/firestore';
-import { sendPasswordResetEmail, getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { sendPasswordResetEmail, getAuth, createUserWithEmailAndPassword, setPersistence, inMemoryPersistence } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
 import { Shield, ShieldAlert, KeyRound, Trash2, UserPlus, Mail, Lock, User, RefreshCw, X, AlertCircle } from 'lucide-react';
 
@@ -74,7 +74,10 @@ const GestaoAcessosTab: React.FC = () => {
       const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp_" + Date.now());
       const secondaryAuth = getAuth(secondaryApp);
 
-      // Cria a conta do novo usuário no Auth securitizado
+      // ISOLAMENTO TOTAL: Impede que o login do novo usuário afete a sessão local principal
+      await setPersistence(secondaryAuth, inMemoryPersistence);
+
+      // Cria a conta do novo usuário no Auth securitizado sem sobrescrever cache
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, newEmail, newPassword);
       const newUid = userCredential.user.uid;
 
