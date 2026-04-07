@@ -51,7 +51,6 @@ const App: React.FC = () => {
     savedScales: []
   });
   
-  const [showBackupMenu, setShowBackupMenu] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('synced');
@@ -192,36 +191,7 @@ const App: React.FC = () => {
     );
   }
 
-  const handleExportBackup = () => {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `backup_adfare_completo_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setShowBackupMenu(false);
-  };
 
-  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const importedData = JSON.parse(event.target?.result as string);
-        if (importedData.obreiros) {
-          setData(importedData);
-          alert("Backup importado com sucesso! Seus dados foram restaurados para a nuvem.");
-        }
-      } catch (e) {
-        alert("Erro ao importar backup. Verifique o arquivo.");
-      }
-    };
-    reader.readAsText(file);
-    setShowBackupMenu(false);
-    e.target.value = '';
-  };
 
   const handleResetBalances = () => {
     if (window.confirm("Isso zerará o saldo de todos os obreiros. As escalas atuais não serão afetadas. Continuar?")) {
@@ -230,7 +200,6 @@ const App: React.FC = () => {
         obreiros: prev.obreiros.map(o => ({ ...o, balance: 0 }))
       }));
     }
-    setShowBackupMenu(false);
   };
 
   const saveCurrentScaleToLibrary = () => {
@@ -255,8 +224,8 @@ const App: React.FC = () => {
       ...prev,
       savedScales: [newSaved, ...prev.savedScales]
     }));
-    alert("Escala e configurações salvas na biblioteca!");
-    setShowBackupMenu(false);
+    alert("Escala salva na biblioteca com sucesso!");
+    setShowProfileMenu(false);
   };
 
   const loadScaleFromLibrary = (scale: SavedScale) => {
@@ -290,7 +259,7 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="bg-adfare-navy text-white px-4 py-3 shadow-lg no-print sticky top-0 z-50 overflow-hidden">
+      <header className="bg-adfare-navy text-white px-4 py-3 shadow-lg no-print sticky top-0 z-50">
         <div className="absolute top-0 left-0 w-full h-1 bg-adfare-gradient"></div>
         <div className="max-w-4xl mx-auto flex justify-between items-center relative z-10">
           <div className="flex items-center gap-3">
@@ -309,7 +278,7 @@ const App: React.FC = () => {
             {/* User Profile Menu */}
             <div className="relative">
               <button 
-                onClick={() => { setShowProfileMenu(!showProfileMenu); setShowBackupMenu(false); }}
+                onClick={() => { setShowProfileMenu(!showProfileMenu); }}
                 className={`flex items-center gap-3 pr-3 py-1 pl-1 rounded-full transition-all border ${showProfileMenu ? 'bg-blue-900 border-blue-700 shadow-xl' : 'bg-blue-900/40 border-blue-800 hover:bg-blue-800'}`}
               >
                 {userProfile?.photoURL ? (
@@ -357,6 +326,33 @@ const App: React.FC = () => {
 
                   <div className="border-t border-slate-50 my-1"></div>
 
+                  {/* Gerenciamento do Mes para Gestores */}
+                  {userProfile?.cargo && userProfile.cargo !== 'Membro' && (
+                    <>
+                      <button onClick={saveCurrentScaleToLibrary} className="w-full text-left px-5 py-3 hover:bg-blue-50 flex items-center gap-3 group">
+                        <div className="bg-blue-100 p-2 rounded-xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                          <Save size={16} />
+                        </div>
+                        <span className="text-sm font-black text-slate-700 tracking-tighter">Arquivar Escala Atual</span>
+                      </button>
+
+                      <button onClick={() => { setShowLibrary(true); setShowProfileMenu(false); }} className="w-full text-left px-5 py-3 hover:bg-emerald-50 flex items-center gap-3 group">
+                        <div className="bg-emerald-100 p-2 rounded-xl text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                          <History size={16} />
+                        </div>
+                        <span className="text-sm font-black text-slate-700 tracking-tighter">Biblioteca de Arquivos</span>
+                      </button>
+
+                      <button onClick={() => { handleResetBalances(); setShowProfileMenu(false); }} className="w-full text-left px-5 py-3 hover:bg-rose-50 flex items-center gap-3 group mb-1">
+                        <div className="bg-rose-100 p-2 rounded-xl text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                          <Trash2 size={16} />
+                        </div>
+                        <span className="text-sm font-black text-rose-600 tracking-tighter">Zerar Saldos Ativos</span>
+                      </button>
+                      <div className="border-t border-slate-50 my-1"></div>
+                    </>
+                  )}
+
                   <button onClick={handleLogout} className="w-full text-left px-5 py-3 hover:bg-rose-50 text-rose-600 flex items-center gap-3 group">
                     <div className="bg-rose-100 p-2 rounded-xl text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
                       <LogOut size={16} />
@@ -366,62 +362,7 @@ const App: React.FC = () => {
                 </div>
               )}
             </div>
-          
-            <div className="relative">
-              <button 
-                onClick={() => { setShowBackupMenu(!showBackupMenu); setShowProfileMenu(false); }} 
-                className={`p-2.5 rounded-2xl transition-all ${showBackupMenu ? 'bg-blue-600 shadow-lg' : 'bg-blue-900/60 hover:bg-blue-800'}`}
-              >
-                <Database size={22} />
-              </button>
-              {showBackupMenu && (
-                <div className="absolute right-0 mt-3 w-64 bg-white rounded-[28px] shadow-2xl py-3 text-gray-800 border border-slate-100 animate-in fade-in slide-in-from-top-2 overflow-hidden">
-                  <div className="px-4 py-2 border-b border-slate-50 mb-2">
-                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Ações de Dados</span>
-                  </div>
-                  
-                  <button onClick={saveCurrentScaleToLibrary} className="w-full text-left px-5 py-3 hover:bg-blue-50 flex items-center gap-3 group">
-                    <div className="bg-blue-100 p-2 rounded-xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                      <Save size={16} />
-                    </div>
-                    <span className="text-sm font-black text-slate-700">Salvar Snapshot Completo</span>
-                  </button>
 
-                  <button onClick={() => { setShowLibrary(true); setShowBackupMenu(false); }} className="w-full text-left px-5 py-3 hover:bg-emerald-50 flex items-center gap-3 group">
-                    <div className="bg-emerald-100 p-2 rounded-xl text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                      <History size={16} />
-                    </div>
-                    <span className="text-sm font-black text-slate-700">Biblioteca de Salvos</span>
-                  </button>
-
-                  <div className="border-t border-slate-50 my-2"></div>
-
-                  <button onClick={handleExportBackup} className="w-full text-left px-5 py-3 hover:bg-slate-50 flex items-center gap-3 group">
-                    <div className="bg-slate-100 p-2 rounded-xl text-slate-600">
-                      <Download size={16} />
-                    </div>
-                    <span className="text-sm font-bold text-slate-600">Exportar Backup</span>
-                  </button>
-
-                  <label className="w-full text-left px-5 py-3 hover:bg-slate-50 flex items-center gap-3 cursor-pointer group">
-                    <div className="bg-slate-100 p-2 rounded-xl text-slate-600">
-                      <Upload size={16} />
-                    </div>
-                    <span className="text-sm font-bold text-slate-600">Importar Backup</span>
-                    <input type="file" className="hidden" accept=".json" onChange={handleImportBackup} />
-                  </label>
-
-                  <div className="border-t border-slate-50 my-2"></div>
-
-                  <button onClick={handleResetBalances} className="w-full text-left px-5 py-3 hover:bg-rose-50 text-rose-600 flex items-center gap-3 group mb-1">
-                    <div className="bg-rose-100 p-2 rounded-xl text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
-                      <Trash2 size={16} />
-                    </div>
-                    <span className="text-sm font-black uppercase tracking-tighter">Zerar Saldos Ativos</span>
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </header>

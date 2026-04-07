@@ -107,7 +107,7 @@ const Login: React.FC = () => {
       <div className="bg-white max-w-md w-full rounded-[40px] shadow-2xl overflow-hidden border border-slate-100">
         <div className="bg-slate-100 p-8 text-adfare-navy text-center flex flex-col items-center justify-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-adfare-gradient"></div>
-          <img src="/adfare_logo.png" alt="ADFARE Logo" className="w-32 h-auto mb-2 drop-shadow-md mix-blend-multiply" />
+          <img src="/adfare_logo_black.png" alt="ADFARE Logo" className="w-32 h-auto mb-2 drop-shadow-md mix-blend-multiply" />
           <p className="text-[10px] font-black text-slate-500 tracking-[0.3em] uppercase mt-2">Gestão de Escala</p>
         </div>
         
