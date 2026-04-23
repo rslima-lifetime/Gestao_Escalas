@@ -33,7 +33,25 @@
 
       @media print {
         .no-print { display: none !important; }
-        body { margin: 0; padding: 0; background-color: white !important; }
+        html, body { 
+          margin: 0 !important; 
+          padding: 0 !important; 
+          background-color: white !important; 
+          min-height: auto !important;
+          height: auto !important;
+        }
+        
+        @page { margin: 10mm; size: A4 portrait; }
+        
+        .pdf-page-canvas {
+          width: 100% !important;
+          max-width: 100% !important;
+          min-height: auto !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          box-shadow: none !important;
+          border: none !important;
+        }
       }
 
       .bg-adfare-gradient {
@@ -45,13 +63,13 @@
         -webkit-text-fill-color: transparent;
       }
 
-      /* Largura exata para A4 Portrait em 96dpi para evitar cortes laterais */
+      /* Largura exata para A4 Portrait em 96dpi para evitar cortes laterais (apenas na tela) */
       .pdf-page-canvas {
         width: 794px !important;
         min-height: 1123px !important;
         background-color: white !important;
         margin: 0 auto !important;
-        padding: 40px !important;
+        padding: 24px !important;
         box-sizing: border-box;
         position: relative;
         display: flex;

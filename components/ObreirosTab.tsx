@@ -18,24 +18,22 @@ const ObreirosTab: React.FC<Props> = ({ data, setData }) => {
   const [formData, setFormData] = useState<Obreiro>({
     id: '',
     name: '',
-    role: '',
+    role: 'Obreiro',
     preferredRole: 'ambos',
     balance: 0,
     fixedDays: [],
-    restrictions: [],
-    linkedWorkerId: undefined
+    restrictions: []
   });
 
   const resetForm = () => {
     setFormData({
       id: '',
       name: '',
-      role: '',
+      role: 'Obreiro',
       preferredRole: 'ambos',
       balance: 0,
       fixedDays: [],
-      restrictions: [],
-      linkedWorkerId: undefined
+      restrictions: []
     });
     setIsAdding(false);
     setEditingId(null);
@@ -51,6 +49,11 @@ const ObreirosTab: React.FC<Props> = ({ data, setData }) => {
       let newObreiros = [...prev.obreiros];
       const currentId = editingId || crypto.randomUUID();
       const updatedWorker = { ...formData, id: currentId };
+      
+      // Firestore não permite valores undefined, então removemos a chave
+      if (!updatedWorker.linkedWorkerId) {
+        delete updatedWorker.linkedWorkerId;
+      }
 
       // Lógica de Vínculo Bidirecional
       if (editingId) {
@@ -67,13 +70,20 @@ const ObreirosTab: React.FC<Props> = ({ data, setData }) => {
           }
           // Se esse obreiro estava vinculado a outra pessoa antes, limpa o vínculo antigo
           if (o.linkedWorkerId === updatedWorker.id && o.id !== updatedWorker.linkedWorkerId) {
-            return { ...o, linkedWorkerId: undefined };
+            const { linkedWorkerId, ...rest } = o;
+            return rest;
           }
           return o;
         });
       } else {
         // Se removi o vínculo, remove da outra pessoa também
-        newObreiros = newObreiros.map(o => o.linkedWorkerId === updatedWorker.id ? { ...o, linkedWorkerId: undefined } : o);
+        newObreiros = newObreiros.map(o => {
+          if (o.linkedWorkerId === updatedWorker.id) {
+            const { linkedWorkerId, ...rest } = o;
+            return rest;
+          }
+          return o;
+        });
       }
 
       return { ...prev, obreiros: newObreiros };
@@ -86,7 +96,13 @@ const ObreirosTab: React.FC<Props> = ({ data, setData }) => {
     if (confirm("Deseja remover este obreiro?")) {
       setData(prev => ({
         ...prev,
-        obreiros: prev.obreiros.filter(o => o.id !== id).map(o => o.linkedWorkerId === id ? { ...o, linkedWorkerId: undefined } : o)
+        obreiros: prev.obreiros.filter(o => o.id !== id).map(o => {
+          if (o.linkedWorkerId === id) {
+            const { linkedWorkerId, ...rest } = o;
+            return rest;
+          }
+          return o;
+        })
       }));
       const newSelected = new Set(selectedIds);
       newSelected.delete(id);
@@ -188,7 +204,11 @@ const ObreirosTab: React.FC<Props> = ({ data, setData }) => {
             </div>
             <div>
               <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Cargo</label>
-              <input type="text" value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-blue-100 outline-none font-bold uppercase" />
+              <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-blue-100 outline-none font-bold uppercase">
+                {['Pastor', 'Evangelista', 'Missionário', 'Missionária', 'Presbítero', 'Diácono', 'Diaconisa', 'Obreiro', 'Obreira'].map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
             </div>
           </div>
 

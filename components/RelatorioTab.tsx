@@ -40,12 +40,29 @@ const RelatorioTab: React.FC<Props> = ({ data, setData }) => {
     setSelectedWeek(0);
   };
 
+  const abbreviateRole = (role: string) => {
+    const map: Record<string, string> = {
+      'Pastor': 'Pr.',
+      'Pastora': 'Pra.',
+      'Evangelista': 'Ev.',
+      'Missionário': 'Miss.',
+      'Missionária': 'Miss.',
+      'Presbítero': 'Pb.',
+      'Diácono': 'Dc.',
+      'Diaconisa': 'Dca.',
+      'Obreiro': 'Ob.',
+      'Obreira': 'Ob.'
+    };
+    return map[role.trim()] || role.trim();
+  };
+
   const getWorkerDisplayName = (id: string | undefined) => {
     if (!id) return '---';
     const obreiro = data.obreiros.find(o => o.id === id);
     if (!obreiro) return '---';
     const name = obreiro.name.length > 40 ? obreiro.name.substring(0, 37) + '...' : obreiro.name;
-    return `${obreiro.role} ${name}`.toUpperCase();
+    const shortRole = abbreviateRole(obreiro.role);
+    return `${shortRole} ${name.toUpperCase()}`;
   };
 
   // Filtra cultos pelo mês e ano selecionados, além do filtro de nome
@@ -125,7 +142,7 @@ const RelatorioTab: React.FC<Props> = ({ data, setData }) => {
     if (typeof html2canvas !== 'undefined') {
       // @ts-ignore
       html2canvas(element, {
-        scale: 3, 
+        scale: 6, // Resolução dobrada (de 3 para 6) para evitar imagem embaçada no WhatsApp
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
@@ -371,76 +388,92 @@ const RelatorioTab: React.FC<Props> = ({ data, setData }) => {
 
       {/* Layout de Impressão */}
       {viewMode === 'print' && (
-        <div className="w-full overflow-hidden flex justify-center pb-10 sm:block">
-          <div className="relative" style={{ width: '794px', height: '1123px' }}>
-             <div className="absolute left-1/2 -translate-x-1/2 origin-top scale-[0.45] sm:scale-100 sm:relative sm:left-0 sm:translate-x-0">
-              <div className="bg-white shadow-2xl overflow-hidden flex flex-col border border-slate-200 p-[40px] pdf-page-canvas" ref={reportRef}>
-                <div className="border-b-4 border-blue-900 pb-4 mb-8 flex justify-between items-end shrink-0">
+        <div className="w-full overflow-hidden flex justify-center pb-10 sm:block print:pb-0">
+          <div className="relative w-[794px] min-h-[1123px] print:w-full print:min-h-0 mx-auto">
+             <div className="absolute left-1/2 -translate-x-1/2 origin-top scale-[0.45] sm:scale-100 sm:relative sm:left-0 sm:translate-x-0 print:static print:transform-none">
+              <div className="bg-white shadow-2xl overflow-hidden flex flex-col border border-slate-200 p-[40px] pdf-page-canvas print:shadow-none print:border-none" ref={reportRef}>
+                <div className="border-b-[3px] border-blue-900 pb-2 mb-4 flex justify-between items-end shrink-0">
                   <div>
-                    <h1 className="text-5xl font-black tracking-tighter text-blue-950 italic uppercase leading-none">ADFARE</h1>
-                    <p className="text-blue-600 font-black tracking-[0.2em] text-[11px] uppercase mt-1">Ministério Família Restaurada</p>
+                    <h1 className="text-4xl font-black tracking-tighter text-blue-950 italic uppercase leading-none">ADFARE</h1>
+                    <p className="text-blue-600 font-black tracking-[0.2em] text-[9px] uppercase mt-1">Ministério Família Restaurada</p>
                   </div>
-                  <div className="bg-blue-900 text-white px-8 py-3 rounded-full shadow-lg">
-                    <span className="text-lg font-black uppercase tracking-widest">{MONTHS[data.currentMonth]} {data.currentYear}</span>
+                  <div className="bg-blue-900 text-white px-6 py-2 rounded-full shadow-sm">
+                    <span className="text-sm font-black uppercase tracking-widest">{MONTHS[data.currentMonth]} {data.currentYear}</span>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-6 flex-grow content-start overflow-hidden">
+                <div className="grid grid-cols-3 gap-x-4 gap-y-4 flex-grow content-start overflow-hidden">
                   {sortedCultos.length === 0 ? (
-                    <div className="col-span-2 text-center py-20 text-slate-300 font-black uppercase">Nenhuma escala para {MONTHS[data.currentMonth]}</div>
+                    <div className="col-span-3 text-center py-20 text-slate-300 font-black uppercase">Nenhuma escala para {MONTHS[data.currentMonth]}</div>
                   ) : (
-                    sortedCultos.map((culto) => (
-                      <div key={culto.id} className={`pdf-card flex flex-col border border-slate-200 rounded-[24px] overflow-hidden bg-white shadow-sm min-h-[160px] ${culto.isSantaCeia ? 'border-purple-200' : ''}`}>
-                        <div className={`px-4 py-2 flex justify-between items-center border-b border-slate-100 ${culto.isSantaCeia ? 'bg-purple-50' : 'bg-slate-50'}`}>
-                          <span className={`text-[10px] font-black uppercase truncate max-w-[70%] leading-none ${culto.isSantaCeia ? 'text-purple-800' : 'text-blue-950'}`}>{culto.isSantaCeia ? '★ SANTA CEIA' : culto.name}</span>
-                          <span className="text-[10px] font-black text-blue-900 leading-none">{culto.time}H</span>
-                        </div>
-                        <div className="flex items-stretch flex-grow min-h-0">
-                          <div className={`w-14 flex flex-col items-center justify-center shrink-0 ${culto.isSantaCeia ? 'bg-purple-900 text-white' : 'bg-blue-900 text-white'}`}>
-                            <span className="text-[9px] font-black opacity-70 mb-0.5 uppercase leading-none">{DAYS_SHORT[culto.dayOfWeek]}</span>
-                            <span className="text-3xl font-black leading-none">{culto.date.split('-')[2]}</span>
+                    sortedCultos.flatMap((culto) => {
+                      const cards = [];
+                      
+                      // Card Principal do Culto
+                      cards.push(
+                        <div key={culto.id} className={`pdf-card flex flex-col border border-slate-200 rounded-[20px] overflow-hidden bg-white shadow-sm min-h-[130px] ${culto.isSantaCeia ? 'border-purple-200' : ''}`}>
+                          <div className={`px-4 py-2 flex justify-between items-center border-b border-slate-100 ${culto.isSantaCeia ? 'bg-purple-50' : 'bg-slate-50'}`}>
+                            <span className={`text-[11px] font-black uppercase leading-tight ${culto.isSantaCeia ? 'text-purple-800' : 'text-blue-950'}`}>{culto.isSantaCeia ? '★ SANTA CEIA' : culto.name}</span>
+                            <span className="text-[11px] font-black text-blue-900 leading-none shrink-0 ml-2">{culto.time}H</span>
                           </div>
-                          <div className="flex-grow p-4 flex flex-col justify-center space-y-3">
-                            <div className="flex items-center gap-3">
-                              <Key size={14} className="text-blue-600 shrink-0" />
-                              <div className="flex flex-col min-w-0"><span className="text-[7px] font-black text-blue-400 uppercase leading-none mb-0.5">ABERTURA</span><span className="text-[12px] font-black text-slate-900 uppercase truncate leading-none">{getWorkerDisplayName(culto.workersAbertura[0])}</span></div>
+                          <div className="flex items-stretch flex-grow min-h-0">
+                            <div className={`w-12 flex flex-col items-center justify-center shrink-0 ${culto.isSantaCeia ? 'bg-purple-900 text-white' : 'bg-blue-900 text-white'}`}>
+                              <span className="text-[9px] font-black opacity-70 mb-0.5 uppercase leading-none">{DAYS_SHORT[culto.dayOfWeek]}</span>
+                              <span className="text-3xl font-black leading-none">{culto.date.split('-')[2]}</span>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <Users size={14} className="text-emerald-600 shrink-0" />
-                              <div className="flex flex-col min-w-0"><span className="text-[7px] font-black text-emerald-400 uppercase leading-none mb-0.5">APOIO</span><span className="text-[12px] font-black text-slate-900 uppercase truncate leading-none">{getWorkerDisplayName(culto.workersApoio[0])}</span></div>
+                            <div className="flex-grow p-3 flex flex-col justify-center space-y-3">
+                              <div className="flex items-center gap-2">
+                                <Key size={14} className="text-blue-600 shrink-0" />
+                                <div className="flex flex-col min-w-0"><span className="text-[8px] font-black text-blue-400 uppercase leading-none mb-0.5">ABERTURA</span><span className="text-xs font-black text-slate-900 uppercase leading-tight">{getWorkerDisplayName(culto.workersAbertura[0])}</span></div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Users size={14} className="text-emerald-600 shrink-0" />
+                                <div className="flex flex-col min-w-0"><span className="text-[8px] font-black text-emerald-400 uppercase leading-none mb-0.5">APOIO</span><span className="text-xs font-black text-slate-900 uppercase leading-tight">{getWorkerDisplayName(culto.workersApoio[0])}</span></div>
+                              </div>
                             </div>
+                          </div>
+                        </div>
+                      );
 
-                            {culto.isSantaCeia && (
-                              <div className="pt-2 mt-2 border-t border-slate-100 space-y-2">
-                                <div className="flex items-start gap-2">
-                                  <Wine size={12} className="text-purple-600 shrink-0 mt-0.5" />
-                                  <div className="flex flex-col min-w-0 flex-grow">
-                                    <span className="text-[6px] font-black text-purple-400 uppercase leading-none mb-1">Equipe de Santa Ceia</span>
-                                    <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-1">
-                                      <div className="flex flex-col min-w-0">
-                                        <span className="text-[5px] font-black text-slate-400 uppercase leading-none">Arrumação</span>
-                                        <span className="text-[8px] font-bold text-slate-700 truncate leading-tight">{getWorkerDisplayName(culto.santaCeiaWorkers?.arrumarMesa)}</span>
-                                      </div>
-                                      <div className="flex flex-col min-w-0">
-                                        <span className="text-[5px] font-black text-slate-400 uppercase leading-none">Desarrumação</span>
-                                        <span className="text-[8px] font-bold text-slate-700 truncate leading-tight">{getWorkerDisplayName(culto.santaCeiaWorkers?.desarrumarMesa)}</span>
-                                      </div>
-                                      <div className="flex flex-col min-w-0">
-                                        <span className="text-[5px] font-black text-slate-400 uppercase leading-none">Servir Pão</span>
-                                        <span className="text-[8px] font-bold text-slate-700 truncate leading-tight">{getWorkerDisplayName(culto.santaCeiaWorkers?.servirPao)}</span>
-                                      </div>
-                                      <div className="flex flex-col min-w-0">
-                                        <span className="text-[5px] font-black text-slate-400 uppercase leading-none">Servir Vinho</span>
-                                        <span className="text-[8px] font-bold text-slate-700 truncate leading-tight">{getWorkerDisplayName(culto.santaCeiaWorkers?.servirVinho)}</span>
-                                      </div>
-                                    </div>
+                      // Card Secundário (Equipe de Santa Ceia)
+                      if (culto.isSantaCeia) {
+                        cards.push(
+                          <div key={`${culto.id}-ceia`} className="pdf-card flex flex-col border border-purple-200 rounded-[20px] overflow-hidden bg-white shadow-sm min-h-[130px]">
+                            <div className="px-4 py-2 flex justify-between items-center border-b border-purple-100 bg-purple-50">
+                              <span className="text-[11px] font-black uppercase leading-tight text-purple-800">EQUIPE DA CEIA</span>
+                              <span className="text-[11px] font-black text-purple-900 leading-none shrink-0 ml-2">{culto.time}H</span>
+                            </div>
+                            <div className="flex items-stretch flex-grow min-h-0">
+                              <div className="w-12 flex flex-col items-center justify-center shrink-0 bg-purple-900 text-white">
+                                <span className="text-[9px] font-black opacity-70 mb-0.5 uppercase leading-none">{DAYS_SHORT[culto.dayOfWeek]}</span>
+                                <span className="text-3xl font-black leading-none">{culto.date.split('-')[2]}</span>
+                              </div>
+                              <div className="flex-grow p-3 flex flex-col justify-center">
+                                <div className="grid grid-cols-2 gap-x-2 gap-y-3">
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-[7px] font-black text-blue-400 uppercase leading-none mb-0.5">ARRUMAÇÃO</span>
+                                    <span className="text-[10px] font-black text-slate-900 uppercase leading-tight">{getWorkerDisplayName(culto.santaCeiaWorkers?.arrumarMesa)}</span>
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-[7px] font-black text-blue-400 uppercase leading-none mb-0.5">DESARRUMAÇÃO</span>
+                                    <span className="text-[10px] font-black text-slate-900 uppercase leading-tight">{getWorkerDisplayName(culto.santaCeiaWorkers?.desarrumarMesa)}</span>
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-[7px] font-black text-blue-400 uppercase leading-none mb-0.5">SERVIR PÃO</span>
+                                    <span className="text-[10px] font-black text-slate-900 uppercase leading-tight">{getWorkerDisplayName(culto.santaCeiaWorkers?.servirPao)}</span>
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-[7px] font-black text-blue-400 uppercase leading-none mb-0.5">SERVIR VINHO</span>
+                                    <span className="text-[10px] font-black text-slate-900 uppercase leading-tight">{getWorkerDisplayName(culto.santaCeiaWorkers?.servirVinho)}</span>
                                   </div>
                                 </div>
                               </div>
-                            )}
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    ))
+                        );
+                      }
+
+                      return cards;
+                    })
                   )}
                 </div>
               </div>

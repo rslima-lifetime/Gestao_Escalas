@@ -63,6 +63,10 @@ const App: React.FC = () => {
   const [editCargo, setEditCargo] = useState('Pastor');
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
+  // Save scale form state
+  const [showSaveScaleModal, setShowSaveScaleModal] = useState(false);
+  const [saveScaleName, setSaveScaleName] = useState('');
+
 
   useEffect(() => {
     if (!user) return;
@@ -207,12 +211,18 @@ const App: React.FC = () => {
       alert("Não há escala para salvar.");
       return;
     }
-    const name = prompt("Dê um nome para esta escala (salvará também os saldos atuais):", `${MONTHS[data.currentMonth]} ${data.currentYear} - Final`);
-    if (!name) return;
+    setSaveScaleName(`${MONTHS[data.currentMonth]} ${data.currentYear} - Final`);
+    setShowProfileMenu(false);
+    setShowSaveScaleModal(true);
+  };
+
+  const confirmSaveScale = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!saveScaleName) return;
 
     const newSaved: SavedScale = {
       id: crypto.randomUUID(),
-      name,
+      name: saveScaleName,
       createdAt: new Date().toLocaleString(),
       month: data.currentMonth,
       year: data.currentYear,
@@ -224,8 +234,10 @@ const App: React.FC = () => {
       ...prev,
       savedScales: [newSaved, ...prev.savedScales]
     }));
-    alert("Escala salva na biblioteca com sucesso!");
-    setShowProfileMenu(false);
+    
+    setShowSaveScaleModal(false);
+    setSaveScaleName('');
+    alert("Escala arquivada na biblioteca com sucesso!");
   };
 
   const loadScaleFromLibrary = (scale: SavedScale) => {
@@ -492,7 +504,7 @@ const App: React.FC = () => {
                     className="w-full bg-slate-50 border border-slate-100 p-4 rounded-3xl outline-none focus:ring-4 focus:ring-blue-100 font-bold"
                     required
                   >
-                    {["Pastor", "Evangelista", "Missionário/Missionária", "Presbítero", "Diácono/Diaconisa", "Obreiro/Obreira", "Membro"].map((c) => (
+                    {["Pastor", "Evangelista", "Missionário", "Missionária", "Presbítero", "Diácono", "Diaconisa", "Obreiro", "Obreira", "Membro"].map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
@@ -504,6 +516,38 @@ const App: React.FC = () => {
                   className="w-full bg-blue-600 text-white p-4 rounded-3xl font-black uppercase tracking-widest mt-6 hover:bg-blue-700 transition"
                 >
                   {isUpdatingProfile ? 'Salvando...' : 'Salvar Alterações'}
+                </button>
+              </form>
+          </div>
+        </div>
+      )}
+
+      {showSaveScaleModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-[40px] shadow-2xl p-8 animate-in zoom-in-95">
+             <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-black uppercase tracking-tighter">Arquivar Escala</h3>
+                <button onClick={() => setShowSaveScaleModal(false)} className="text-slate-400 hover:bg-slate-100 p-2 rounded-full"><X size={20} /></button>
+             </div>
+
+             <form onSubmit={confirmSaveScale} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2">Nome do Arquivo</label>
+                  <input 
+                    type="text" 
+                    value={saveScaleName}
+                    onChange={(e) => setSaveScaleName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-100 p-4 rounded-3xl outline-none focus:ring-4 focus:ring-blue-100 font-bold"
+                    placeholder="Ex: Janeiro 2024 - Final"
+                    required
+                  />
+                </div>
+                
+                <button 
+                  type="submit" 
+                  className="w-full bg-blue-600 text-white p-4 rounded-3xl font-black uppercase tracking-widest mt-6 hover:bg-blue-700 transition"
+                >
+                  Arquivar Agora
                 </button>
              </form>
           </div>

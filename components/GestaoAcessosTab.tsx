@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { db, auth as primaryAuth } from '../lib/firebase';
+import { db, auth as primaryAuth, firebaseConfig } from '../lib/firebase';
 import { collection, getDocs, doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { sendPasswordResetEmail, getAuth, createUserWithEmailAndPassword, setPersistence, inMemoryPersistence } from 'firebase/auth';
-import { initializeApp } from 'firebase/app';
-import { Shield, ShieldAlert, KeyRound, Trash2, UserPlus, Mail, Lock, User, RefreshCw, X, AlertCircle } from 'lucide-react';
+import { initializeApp, deleteApp, getApp } from 'firebase/app';
+import { Shield, ShieldAlert, KeyRound, Trash2, UserPlus, Mail, Lock, User, RefreshCw, X, AlertCircle, Search } from 'lucide-react';
 
 interface FirebaseUserDoc {
   id: string;
@@ -24,21 +24,15 @@ const CARGOS = [
   "Membro"
 ];
 
-// Re-criar configuração para Instância Secundária
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
-};
+// CARGOS removido daqui para evitar duplicação ou moved para constante global se necessário
+// Mas no arquivo original ele estava aqui. Vou manter apenas a importação do config.
 
 const GestaoAcessosTab: React.FC = () => {
   const [users, setUsers] = useState<FirebaseUserDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // New user state
   const [newNome, setNewNome] = useState('');
@@ -70,21 +64,17 @@ const GestaoAcessosTab: React.FC = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      // Cria uma instância Firebase separada para não deslogar o Pastor
-      const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp_" + Date.now());
+      const secondaryAppName = "SecondaryApp_" + Date.now();
+      const secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
       const secondaryAuth = getAuth(secondaryApp);
 
-      // ISOLAMENTO TOTAL: Impede que o login do novo usuário afete a sessão local principal
       await setPersistence(secondaryAuth, inMemoryPersistence);
-
-      // Cria a conta do novo usuário no Auth securitizado sem sobrescrever cache
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, newEmail, newPassword);
       const newUid = userCredential.user.uid;
 
-      // Desloga da instância temporária imediatamente
       await secondaryAuth.signOut();
+      await deleteApp(secondaryApp);
 
-      // Salva no Firestore usando as credenciais do Pastor (via app principal)
       await setDoc(doc(db, "users", newUid), {
         nome: newNome,
         email: newEmail,
@@ -98,7 +88,7 @@ const GestaoAcessosTab: React.FC = () => {
       setNewNome('');
       setNewEmail('');
       setNewPassword('');
-      fetchUsers(); // Atualiza a lista
+      fetchUsers();
     } catch (error: any) {
       console.error("Erro ao criar usuário:", error);
       alert("Erro ao criar usuário: " + (error.message || "Aconteceu uma falha."));
@@ -106,6 +96,15 @@ const GestaoAcessosTab: React.FC = () => {
       setSubmitting(false);
     }
   };
+
+  const filteredUsers = users.filter(u => {
+    const s = searchTerm.toLowerCase();
+    return (
+      u.nome.toLowerCase().includes(s) || 
+      u.email.toLowerCase().includes(s) || 
+      u.cargo.toLowerCase().includes(s)
+    );
+  }).sort((a,b) => a.nome.localeCompare(b.nome));
 
   const handlePasswordReset = async (email: string) => {
     if (confirm(`Tem certeza que deseja enviar um e-mail de redefinição de senha para ${email}?`)) {
@@ -158,6 +157,25 @@ const GestaoAcessosTab: React.FC = () => {
         </p>
       </div>
 
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
+        <input 
+          type="text" 
+          placeholder="Filtrar por nome, email ou cargo..." 
+          value={searchTerm} 
+          onChange={e => setSearchTerm(e.target.value)} 
+          className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-3xl font-bold text-slate-900 placeholder:text-slate-300 focus:ring-4 focus:ring-blue-100 outline-none transition-all shadow-sm" 
+        />
+        {searchTerm && (
+          <button 
+            onClick={() => setSearchTerm('')} 
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"
+          >
+            <X size={18} />
+          </button>
+        )}
+      </div>
+
       {loading ? (
         <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-400">
            <RefreshCw size={32} className="animate-spin" />
@@ -165,7 +183,7 @@ const GestaoAcessosTab: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {users.map(u => (
+          {filteredUsers.map(u => (
             <div key={u.id} className="bg-white p-5 rounded-[28px] border border-slate-100 shadow-sm flex flex-col gap-4 relative overflow-hidden group">
               <div className="flex items-center gap-3">
                 {u.photoURL ? (
