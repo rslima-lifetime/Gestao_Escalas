@@ -1,6 +1,6 @@
 
 import React, { useRef, useState, useMemo } from 'react';
-import { Key, Users, Search, X, Smartphone, Printer, Share2, CalendarDays, FileDown, ChevronLeft, ChevronRight, Zap, ShieldCheck, Quote, Calendar, Wine, Link as LinkIcon, Check, ChevronDown, Megaphone } from 'lucide-react';
+import { Key, Users, Search, X, Smartphone, Printer, Share2, CalendarDays, FileDown, ChevronLeft, ChevronRight, Zap, ShieldCheck, Quote, Calendar, Wine, Link as LinkIcon, Check, ChevronDown, Megaphone, ListChecks, ChevronUp } from 'lucide-react';
 import { AppDataV1, Culto } from '../types';
 import { MONTHS, DAYS_SHORT } from '../constants';
 
@@ -19,6 +19,9 @@ const RelatorioTab: React.FC<Props> = ({ data, setData, isPublic = false }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   
   const reportRef = useRef<HTMLDivElement>(null);
+  const [showPublicChecklist, setShowPublicChecklist] = useState(false);
+  const [expandedPublicSections, setExpandedPublicSections] = useState<Record<string, boolean>>({});
+  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [showPublicAnnouncement, setShowPublicAnnouncement] = useState(() => {
     if (!isPublic || !data.announcement || !data.announcement.active) return false;
     const dismissedId = localStorage.getItem('adfare_dismissed_announcement_id');
@@ -483,6 +486,16 @@ const RelatorioTab: React.FC<Props> = ({ data, setData, isPublic = false }) => {
             {copyingLink ? 'Link Copiado!' : 'Copiar Link Público para Obreiros'}
           </button>
         )}
+
+        {isPublic && data.checklists && data.checklists.length > 0 && (
+          <button 
+            onClick={() => setShowPublicChecklist(true)} 
+            className="w-full py-5 mt-2 bg-blue-600 text-white rounded-[24px] font-black flex items-center justify-center gap-3 text-[11px] uppercase tracking-widest shadow-[0_10px_30px_rgba(37,99,235,0.3)] active:scale-95 transition-all"
+          >
+            <ListChecks size={18} />
+            Roteiros e Checklists
+          </button>
+        )}
       </div>
 
       {/* RENDERIZADORES DE EXPORTAÇÃO (OCULTOS) */}
@@ -641,6 +654,89 @@ const RelatorioTab: React.FC<Props> = ({ data, setData, isPublic = false }) => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* MODAL DE CHECKLIST PÚBLICO */}
+      {showPublicChecklist && (
+        <div className="fixed inset-0 z-[110] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 no-print">
+           <div className="bg-white w-full max-w-md rounded-[48px] shadow-2xl overflow-hidden animate-in zoom-in-95 flex flex-col max-h-[90vh]">
+              <div className="p-8 bg-blue-600 text-white flex justify-between items-start shrink-0 relative">
+                 <div className="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
+                 <div>
+                    <h3 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-3">
+                      <ListChecks size={28} /> Checklist de Rotina
+                    </h3>
+                    <p className="text-[10px] font-bold text-blue-100 uppercase tracking-widest mt-1 opacity-80">Guia passo-a-passo para o obreiro</p>
+                 </div>
+                 <button onClick={() => setShowPublicChecklist(false)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-colors">
+                    <X size={24} />
+                 </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto space-y-3 flex-grow bg-slate-50/50">
+                 {data.checklists?.map(section => (
+                    <div key={section.id} className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden transition-all">
+                       <button 
+                         onClick={() => setExpandedPublicSections(prev => ({ ...prev, [section.id]: !prev[section.id] }))}
+                         className="w-full flex items-center justify-between p-5 hover:bg-slate-50/50 transition-colors"
+                       >
+                          <div className="flex items-center gap-3">
+                             <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${expandedPublicSections[section.id] ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-500'}`}>
+                                <ListChecks size={16} />
+                             </div>
+                             <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-widest">{section.title}</h4>
+                          </div>
+                          {expandedPublicSections[section.id] ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
+                       </button>
+                       
+                       {expandedPublicSections[section.id] && (
+                          <div className="px-5 pb-5 pt-2 grid gap-2 animate-in slide-in-from-top-2">
+                             {section.items.map(item => (
+                                <label 
+                                  key={item.id} 
+                                  className={`flex items-center gap-4 p-4 rounded-[24px] border transition-all cursor-pointer ${checkedItems[item.id] ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-slate-50 shadow-sm hover:border-blue-200'}`}
+                                >
+                                   <div className="relative flex items-center justify-center">
+                                      <input 
+                                        type="checkbox" 
+                                        className="peer hidden" 
+                                        checked={!!checkedItems[item.id]}
+                                        onChange={() => setCheckedItems(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                      />
+                                      <div className={`w-7 h-7 rounded-xl border-2 flex items-center justify-center transition-all ${checkedItems[item.id] ? 'bg-emerald-500 border-emerald-500 text-white scale-110 shadow-lg shadow-emerald-100' : 'bg-slate-50 border-slate-200 text-transparent'}`}>
+                                         <Check size={16} strokeWidth={4} />
+                                      </div>
+                                   </div>
+                                   <span className={`text-sm font-bold tracking-tight leading-snug transition-all ${checkedItems[item.id] ? 'text-emerald-700 line-through opacity-60' : 'text-slate-700'}`}>
+                                      {item.text}
+                                   </span>
+                                </label>
+                             ))}
+                             {section.items.length === 0 && (
+                               <p className="text-center py-4 text-[10px] font-bold text-slate-300 uppercase italic">Nenhuma atividade cadastrada</p>
+                             )}
+                          </div>
+                       )}
+                    </div>
+                 ))}
+              </div>
+
+              <div className="p-8 bg-white border-t border-slate-100 shrink-0 flex flex-col gap-3">
+                 <button 
+                   onClick={() => setShowPublicChecklist(false)}
+                   className="w-full py-5 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+                 >
+                   Concluir Rotina
+                 </button>
+                 <button 
+                   onClick={() => setCheckedItems({})}
+                   className="w-full py-3 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-rose-500 transition-colors"
+                 >
+                   Limpar Tudo
+                 </button>
+              </div>
+           </div>
         </div>
       )}
     </div>

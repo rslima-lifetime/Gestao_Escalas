@@ -51,6 +51,17 @@ export interface SavedScale {
   obreiros: Obreiro[]; // Snapshot das configurações dos obreiros
 }
 
+export interface ChecklistItem {
+  id: string;
+  text: string;
+}
+
+export interface ChecklistSection {
+  id: string;
+  title: string;
+  items: ChecklistItem[];
+}
+
 export interface AppDataV1 {
   obreiros: Obreiro[];
   cultos: Culto[];
@@ -63,4 +74,5 @@ export interface AppDataV1 {
     createdAt: string;
     active: boolean;
   };
+  checklists?: ChecklistSection[];
 }

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, CalendarDays, ClipboardList, Database, Download, Upload, Trash2, Save, FolderOpen, X, History, Cloud, CloudOff, LogOut, User, ChevronDown, Edit2, Shield, Megaphone } from 'lucide-react';
+import { UserPlus, CalendarDays, ClipboardList, Database, Download, Upload, Trash2, Save, FolderOpen, X, History, Cloud, CloudOff, LogOut, User, ChevronDown, Edit2, Shield, Megaphone, ListChecks } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { AppDataV1, Obreiro, SavedScale } from './types';
 import ObreirosTab from './components/ObreirosTab';
 import GerenciarMesTab from './components/GerenciarMesTab';
 import RelatorioTab from './components/RelatorioTab';
 import GestaoAcessosTab from './components/GestaoAcessosTab';
+import ChecklistAdminTab from './components/ChecklistAdminTab';
 import { MONTHS } from './constants';
 import { useAuth } from './context/AuthContext';
 import Login from './components/Login';
@@ -43,7 +44,7 @@ const App: React.FC = () => {
   const { user } = useAuth();
   const isPublic = new URLSearchParams(window.location.search).get('view') === 'public';
 
-  const [activeTab, setActiveTab] = useState<'obreiros' | 'mes' | 'relatorio' | 'usuarios'>('obreiros');
+  const [activeTab, setActiveTab] = useState<'obreiros' | 'mes' | 'relatorio' | 'usuarios' | 'checklist'>('obreiros');
   const [data, setData] = useState<AppDataV1>({
     obreiros: INITIAL_OBREIROS,
     cultos: [],
@@ -401,6 +402,7 @@ const App: React.FC = () => {
               ...(userProfile?.cargo && userProfile.cargo !== 'Membro' ? [
                   { id: 'obreiros', label: 'OBREIROS', icon: UserPlus },
                   { id: 'mes', label: 'GERENCIAR', icon: CalendarDays },
+                  { id: 'checklist', label: 'ROTINA', icon: ListChecks },
               ] : []),
               { id: 'relatorio', label: 'MURAL', icon: ClipboardList },
               ...(userProfile?.cargo === 'Pastor' ? [{ id: 'usuarios', label: 'ACESSOS', icon: Shield }] : [])
@@ -425,6 +427,7 @@ const App: React.FC = () => {
           <>
             {activeTab === 'obreiros' && userProfile?.cargo && userProfile.cargo !== 'Membro' && <ObreirosTab data={data} setData={setData} />}
             {activeTab === 'mes' && userProfile?.cargo && userProfile.cargo !== 'Membro' && <GerenciarMesTab data={data} setData={setData} />}
+            {activeTab === 'checklist' && userProfile?.cargo && userProfile.cargo !== 'Membro' && <ChecklistAdminTab data={data} setData={setData} />}
             {activeTab === 'relatorio' && <RelatorioTab data={data} setData={setData} />}
             {activeTab === 'usuarios' && userProfile?.cargo === 'Pastor' && <GestaoAcessosTab />}
           </>
