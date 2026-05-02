@@ -41,6 +41,7 @@ const INITIAL_OBREIROS: Obreiro[] = [
 
 const App: React.FC = () => {
   const { user } = useAuth();
+  const isPublic = new URLSearchParams(window.location.search).get('view') === 'public';
 
   const [activeTab, setActiveTab] = useState<'obreiros' | 'mes' | 'relatorio' | 'usuarios'>('obreiros');
   const [data, setData] = useState<AppDataV1>({
@@ -69,30 +70,37 @@ const App: React.FC = () => {
 
 
   useEffect(() => {
-    if (!user) return;
+    if (!user && !isPublic) return;
     
     const loadCloudData = async () => {
       try {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        
-        let legacyDataToMigrate: any = null;
-        
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setUserProfile({
-            cargo: userData.cargo,
-            nome: userData.nome || user.displayName || 'Usuário',
-            photoURL: userData.photoURL || user.photoURL || ''
-          });
+        if (user) {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
           
-          // Captura dados legados para migração, se houver
-          if (userData.obreiros) {
-             const { cargo, nome, photoURL, email, createdAt, ...appDataOnly } = userData as any;
-             legacyDataToMigrate = appDataOnly;
+          let legacyDataToMigrate: any = null;
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setUserProfile({
+              cargo: userData.cargo,
+              nome: userData.nome || user.displayName || 'Usuário',
+              photoURL: userData.photoURL || user.photoURL || ''
+            });
+            
+            // Captura dados legados para migração, se houver
+            if (userData.obreiros) {
+               const { cargo, nome, photoURL, email, createdAt, ...appDataOnly } = userData as any;
+               legacyDataToMigrate = appDataOnly;
+            }
+          }
+          
+          // Se usuário for apenas Membro, direciona pro Mural pra não ficar preso na página bloqueada
+          if (userDoc.exists() && userDoc.data().cargo === 'Membro') {
+             setActiveTab('relatorio');
           }
         }
         
-        // 2. Carrega Dados Globais da Igreja
+        // Carrega Dados Globais da Igreja (Sempre necessário, inclusive no público)
         const globalDoc = await getDoc(doc(db, 'ministerio', 'adfare_data'));
         
         if (globalDoc.exists()) {
@@ -107,28 +115,10 @@ const App: React.FC = () => {
              obreiros: [...savedObreiros, ...missingObreiros],
              savedScales: cloudData.savedScales || []
           });
-        } else if (legacyDataToMigrate) {
-          // Faz a migração automática copiando os dados antigos do Pastor pro Global!
-          const savedObreiros = legacyDataToMigrate.obreiros || [];
-          const missingObreiros = INITIAL_OBREIROS.filter(
-            initOb => !savedObreiros.some((savedOb: Obreiro) => savedOb.id === initOb.id)
-          );
-          setData({
-             ...legacyDataToMigrate,
-             obreiros: [...savedObreiros, ...missingObreiros],
-             savedScales: legacyDataToMigrate.savedScales || []
-          });
-        } else {
-          // Migração do LocalStorage para Nuvem no primeiro acesso extremo
-          const localSaved = localStorage.getItem(LOCAL_STORAGE_KEY);
-          if (localSaved) {
-            setData(JSON.parse(localSaved));
-          }
         }
         
-        // Se usuário for apenas Membro, direciona pro Mural pra não ficar preso na página bloqueada
-        if (userDoc.exists() && userDoc.data().cargo === 'Membro') {
-           setActiveTab('relatorio');
+        if (isPublic) {
+          setActiveTab('relatorio');
         }
       } catch (e) {
         console.error("Erro ao carregar dados", e);
@@ -138,7 +128,7 @@ const App: React.FC = () => {
     };
     
     loadCloudData();
-  }, [user]);
+  }, [user, isPublic]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,7 +172,7 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, [data, user, dataLoaded, userProfile]);
 
-  if (!user) {
+  if (!user && !isPublic) {
     return <Login />;
   }
 
@@ -282,131 +272,146 @@ const App: React.FC = () => {
               <span className="text-[9px] font-black text-slate-300 tracking-[0.3em] uppercase mt-1 drop-shadow-sm">Gestão de Escala</span>
             </div>
           </div>
+          
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-[14px]" title={syncStatus === 'syncing' ? 'Sincronizando...' : syncStatus === 'synced' ? 'Salvo na Nuvem' : 'Erro ao Salvar'}>
-              {syncStatus === 'syncing' ? <Cloud className="animate-pulse text-blue-300" size={16} /> : syncStatus === 'synced' ? <Cloud className="text-emerald-400" size={16} /> : <CloudOff className="text-rose-400" size={16} />}
-            </div>
+            {!isPublic && (
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-[14px]" title={syncStatus === 'syncing' ? 'Sincronizando...' : syncStatus === 'synced' ? 'Salvo na Nuvem' : 'Erro ao Salvar'}>
+                {syncStatus === 'syncing' ? <Cloud className="animate-pulse text-blue-300" size={16} /> : syncStatus === 'synced' ? <Cloud className="text-emerald-400" size={16} /> : <CloudOff className="text-rose-400" size={16} />}
+              </div>
+            )}
 
-            {/* User Profile Menu */}
-            <div className="relative">
-              <button 
-                onClick={() => { setShowProfileMenu(!showProfileMenu); }}
-                className={`flex items-center gap-3 pr-3 py-1 pl-1 rounded-full transition-all border ${showProfileMenu ? 'bg-blue-900 border-blue-700 shadow-xl' : 'bg-blue-900/40 border-blue-800 hover:bg-blue-800'}`}
-              >
-                {userProfile?.photoURL ? (
-                  <img src={userProfile.photoURL} alt="Perfil" className="w-8 h-8 rounded-full object-cover border-2 border-blue-400" />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-blue-700 flex items-center justify-center text-blue-200 border-2 border-blue-500">
-                    <User size={16} />
+            {!isPublic ? (
+              <div className="relative">
+                <button 
+                  onClick={() => { setShowProfileMenu(!showProfileMenu); }}
+                  className={`flex items-center gap-3 pr-3 py-1 pl-1 rounded-full transition-all border ${showProfileMenu ? 'bg-blue-900 border-blue-700 shadow-xl' : 'bg-blue-900/40 border-blue-800 hover:bg-blue-800'}`}
+                >
+                  {userProfile?.photoURL ? (
+                    <img src={userProfile.photoURL} alt="Perfil" className="w-8 h-8 rounded-full object-cover border-2 border-blue-400" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-blue-700 flex items-center justify-center text-blue-200 border-2 border-blue-500">
+                      <User size={16} />
+                    </div>
+                  )}
+                  <div className="flex flex-col items-start hidden sm:flex max-w-[120px]">
+                    <span className="text-xs font-black text-white truncate w-full">{userProfile?.nome || user?.displayName || 'Usuário'}</span>
+                    <span className="text-[9px] font-bold text-blue-300 uppercase tracking-widest truncate w-full">{userProfile?.cargo || 'Membro'}</span>
+                  </div>
+                  <ChevronDown size={14} className="text-blue-300 ml-1 hidden sm:block" />
+                </button>
+
+                {showProfileMenu && (
+                  <div className="absolute right-0 mt-3 w-64 bg-white rounded-[28px] shadow-2xl py-3 text-gray-800 border border-slate-100 animate-in fade-in slide-in-from-top-2 overflow-hidden z-50">
+                    <div className="px-5 py-3 border-b border-slate-50 mb-2 flex items-center gap-3">
+                       {userProfile?.photoURL ? (
+                          <img src={userProfile.photoURL} alt="Perfil" className="w-12 h-12 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
+                            <User size={24} />
+                          </div>
+                        )}
+                        <div className="flex flex-col overflow-hidden">
+                          <span className="text-sm font-black text-slate-800 truncate">{userProfile?.nome || user?.displayName || 'Usuário'}</span>
+                          <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest truncate">{userProfile?.cargo || 'Membro'}</span>
+                          <span className="text-[10px] text-slate-400 truncate mt-0.5">{user?.email}</span>
+                        </div>
+                    </div>
+                    
+                    <button onClick={() => {
+                      setEditNome(userProfile?.nome || user?.displayName || '');
+                      setEditCargo(userProfile?.cargo || 'Membro');
+                      setShowEditProfile(true);
+                      setShowProfileMenu(false);
+                    }} className="w-full text-left px-5 py-3 hover:bg-blue-50 flex items-center gap-3 group mt-1">
+                      <div className="bg-blue-100 p-2 rounded-xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                        <Edit2 size={16} />
+                      </div>
+                      <span className="text-sm font-black uppercase text-slate-700 tracking-tighter">Editar Perfil</span>
+                    </button>
+
+                    <div className="border-t border-slate-50 my-1"></div>
+
+                    {userProfile?.cargo && userProfile.cargo !== 'Membro' && (
+                      <>
+                        <button onClick={saveCurrentScaleToLibrary} className="w-full text-left px-5 py-3 hover:bg-blue-50 flex items-center gap-3 group">
+                          <div className="bg-blue-100 p-2 rounded-xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                            <Save size={16} />
+                          </div>
+                          <span className="text-sm font-black text-slate-700 tracking-tighter">Arquivar Escala Atual</span>
+                        </button>
+
+                        <button onClick={() => { setShowLibrary(true); setShowProfileMenu(false); }} className="w-full text-left px-5 py-3 hover:bg-emerald-50 flex items-center gap-3 group">
+                          <div className="bg-emerald-100 p-2 rounded-xl text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                            <History size={16} />
+                          </div>
+                          <span className="text-sm font-black text-slate-700 tracking-tighter">Biblioteca de Arquivos</span>
+                        </button>
+
+                        <button onClick={() => { handleResetBalances(); setShowProfileMenu(false); }} className="w-full text-left px-5 py-3 hover:bg-rose-50 flex items-center gap-3 group mb-1">
+                          <div className="bg-rose-100 p-2 rounded-xl text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                            <Trash2 size={16} />
+                          </div>
+                          <span className="text-sm font-black text-rose-600 tracking-tighter">Zerar Saldos Ativos</span>
+                        </button>
+                        <div className="border-t border-slate-50 my-1"></div>
+                      </>
+                    )}
+
+                    <button onClick={handleLogout} className="w-full text-left px-5 py-3 hover:bg-rose-50 text-rose-600 flex items-center gap-3 group">
+                      <div className="bg-rose-100 p-2 rounded-xl text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                        <LogOut size={16} />
+                      </div>
+                      <span className="text-sm font-black uppercase tracking-tighter">Sair da Conta</span>
+                    </button>
                   </div>
                 )}
-                <div className="flex flex-col items-start hidden sm:flex max-w-[120px]">
-                  <span className="text-xs font-black text-white truncate w-full">{userProfile?.nome || user.displayName || 'Usuário'}</span>
-                  <span className="text-[9px] font-bold text-blue-300 uppercase tracking-widest truncate w-full">{userProfile?.cargo || 'Membro'}</span>
-                </div>
-                <ChevronDown size={14} className="text-blue-300 ml-1 hidden sm:block" />
-              </button>
-
-              {showProfileMenu && (
-                <div className="absolute right-0 mt-3 w-64 bg-white rounded-[28px] shadow-2xl py-3 text-gray-800 border border-slate-100 animate-in fade-in slide-in-from-top-2 overflow-hidden z-50">
-                  <div className="px-5 py-3 border-b border-slate-50 mb-2 flex items-center gap-3">
-                     {userProfile?.photoURL ? (
-                        <img src={userProfile.photoURL} alt="Perfil" className="w-12 h-12 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
-                          <User size={24} />
-                        </div>
-                      )}
-                      <div className="flex flex-col overflow-hidden">
-                        <span className="text-sm font-black text-slate-800 truncate">{userProfile?.nome || user.displayName || 'Usuário'}</span>
-                        <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest truncate">{userProfile?.cargo || 'Membro'}</span>
-                        <span className="text-[10px] text-slate-400 truncate mt-0.5">{user.email}</span>
-                      </div>
-                  </div>
-                  
-                  <button onClick={() => {
-                    setEditNome(userProfile?.nome || user.displayName || '');
-                    setEditCargo(userProfile?.cargo || 'Membro');
-                    setShowEditProfile(true);
-                    setShowProfileMenu(false);
-                  }} className="w-full text-left px-5 py-3 hover:bg-blue-50 flex items-center gap-3 group mt-1">
-                    <div className="bg-blue-100 p-2 rounded-xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                      <Edit2 size={16} />
-                    </div>
-                    <span className="text-sm font-black uppercase text-slate-700 tracking-tighter">Editar Perfil</span>
-                  </button>
-
-                  <div className="border-t border-slate-50 my-1"></div>
-
-                  {/* Gerenciamento do Mes para Gestores */}
-                  {userProfile?.cargo && userProfile.cargo !== 'Membro' && (
-                    <>
-                      <button onClick={saveCurrentScaleToLibrary} className="w-full text-left px-5 py-3 hover:bg-blue-50 flex items-center gap-3 group">
-                        <div className="bg-blue-100 p-2 rounded-xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                          <Save size={16} />
-                        </div>
-                        <span className="text-sm font-black text-slate-700 tracking-tighter">Arquivar Escala Atual</span>
-                      </button>
-
-                      <button onClick={() => { setShowLibrary(true); setShowProfileMenu(false); }} className="w-full text-left px-5 py-3 hover:bg-emerald-50 flex items-center gap-3 group">
-                        <div className="bg-emerald-100 p-2 rounded-xl text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                          <History size={16} />
-                        </div>
-                        <span className="text-sm font-black text-slate-700 tracking-tighter">Biblioteca de Arquivos</span>
-                      </button>
-
-                      <button onClick={() => { handleResetBalances(); setShowProfileMenu(false); }} className="w-full text-left px-5 py-3 hover:bg-rose-50 flex items-center gap-3 group mb-1">
-                        <div className="bg-rose-100 p-2 rounded-xl text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
-                          <Trash2 size={16} />
-                        </div>
-                        <span className="text-sm font-black text-rose-600 tracking-tighter">Zerar Saldos Ativos</span>
-                      </button>
-                      <div className="border-t border-slate-50 my-1"></div>
-                    </>
-                  )}
-
-                  <button onClick={handleLogout} className="w-full text-left px-5 py-3 hover:bg-rose-50 text-rose-600 flex items-center gap-3 group">
-                    <div className="bg-rose-100 p-2 rounded-xl text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
-                      <LogOut size={16} />
-                    </div>
-                    <span className="text-sm font-black uppercase tracking-tighter">Sair da Conta</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
+              </div>
+            ) : (
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-black text-white uppercase tracking-widest leading-none">Mural Público</span>
+                <span className="text-[8px] font-bold text-blue-400 uppercase tracking-tighter mt-1 opacity-60">Somente Leitura</span>
+              </div>
+            )}
           </div>
         </div>
       </header>
 
-      <nav className="bg-white border-b no-print sticky top-[68px] z-40 shadow-sm overflow-x-auto">
-        <div className="max-w-4xl mx-auto flex min-w-max md:min-w-0">
-          {[
-            // Mostra abas gerenciais apenas para não-Membros.
-            ...(userProfile?.cargo && userProfile.cargo !== 'Membro' ? [
-                { id: 'obreiros', label: 'OBREIROS', icon: UserPlus },
-                { id: 'mes', label: 'GERENCIAR', icon: CalendarDays },
-            ] : []),
-            { id: 'relatorio', label: 'MURAL', icon: ClipboardList },
-            ...(userProfile?.cargo === 'Pastor' ? [{ id: 'usuarios', label: 'ACESSOS', icon: Shield }] : [])
-          ].map(tab => (
-            <button 
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 py-4 text-[10px] font-black tracking-widest border-b-4 transition-all flex flex-col items-center gap-1.5 ${activeTab === tab.id ? 'border-adfare-orange text-adfare-orange bg-slate-50/50' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-            >
-              <tab.icon size={20} />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </nav>
+      {!isPublic && (
+        <nav className="bg-white border-b no-print sticky top-[68px] z-40 shadow-sm overflow-x-auto">
+          <div className="max-w-4xl mx-auto flex min-w-max md:min-w-0">
+            {[
+              // Mostra abas gerenciais apenas para não-Membros.
+              ...(userProfile?.cargo && userProfile.cargo !== 'Membro' ? [
+                  { id: 'obreiros', label: 'OBREIROS', icon: UserPlus },
+                  { id: 'mes', label: 'GERENCIAR', icon: CalendarDays },
+              ] : []),
+              { id: 'relatorio', label: 'MURAL', icon: ClipboardList },
+              ...(userProfile?.cargo === 'Pastor' ? [{ id: 'usuarios', label: 'ACESSOS', icon: Shield }] : [])
+            ].map(tab => (
+              <button 
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex-1 py-4 text-[10px] font-black tracking-widest border-b-4 transition-all flex flex-col items-center gap-1.5 ${activeTab === tab.id ? 'border-adfare-orange text-adfare-orange bg-slate-50/50' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+              >
+                <tab.icon size={20} />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </nav>
+      )}
 
       <main className="flex-grow max-w-4xl mx-auto w-full p-4 pb-24">
-        {activeTab === 'obreiros' && userProfile?.cargo && userProfile.cargo !== 'Membro' && <ObreirosTab data={data} setData={setData} />}
-        {activeTab === 'mes' && userProfile?.cargo && userProfile.cargo !== 'Membro' && <GerenciarMesTab data={data} setData={setData} />}
-        {activeTab === 'relatorio' && <RelatorioTab data={data} setData={setData} />}
-        {activeTab === 'usuarios' && userProfile?.cargo === 'Pastor' && <GestaoAcessosTab />}
+        {isPublic ? (
+           <RelatorioTab data={data} setData={setData} isPublic={true} />
+        ) : (
+          <>
+            {activeTab === 'obreiros' && userProfile?.cargo && userProfile.cargo !== 'Membro' && <ObreirosTab data={data} setData={setData} />}
+            {activeTab === 'mes' && userProfile?.cargo && userProfile.cargo !== 'Membro' && <GerenciarMesTab data={data} setData={setData} />}
+            {activeTab === 'relatorio' && <RelatorioTab data={data} setData={setData} />}
+            {activeTab === 'usuarios' && userProfile?.cargo === 'Pastor' && <GestaoAcessosTab />}
+          </>
+        )}
       </main>
 
       {showLibrary && (

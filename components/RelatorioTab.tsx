@@ -1,19 +1,21 @@
 
 import React, { useRef, useState, useMemo } from 'react';
-import { Key, Users, Search, X, Smartphone, Printer, Share2, CalendarDays, FileDown, ChevronLeft, ChevronRight, Zap, ShieldCheck, Quote, Calendar, Wine } from 'lucide-react';
+import { Key, Users, Search, X, Smartphone, Printer, Share2, CalendarDays, FileDown, ChevronLeft, ChevronRight, Zap, ShieldCheck, Quote, Calendar, Wine, Link as LinkIcon, Check } from 'lucide-react';
 import { AppDataV1, Culto } from '../types';
 import { MONTHS, DAYS_SHORT } from '../constants';
 
 interface Props {
   data: AppDataV1;
   setData?: React.Dispatch<React.SetStateAction<AppDataV1>>;
+  isPublic?: boolean;
 }
 
-const RelatorioTab: React.FC<Props> = ({ data, setData }) => {
+const RelatorioTab: React.FC<Props> = ({ data, setData, isPublic = false }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [filterName, setFilterName] = useState('');
-  const [viewMode, setViewMode] = useState<'print' | 'mobile' | 'weekly'>('weekly');
+  const [viewMode, setViewMode] = useState<'print' | 'mobile' | 'weekly'>(isPublic ? 'mobile' : 'weekly');
   const [selectedWeek, setSelectedWeek] = useState(0);
+  const [copyingLink, setCopyingLink] = useState(false);
   
   const reportRef = useRef<HTMLDivElement>(null);
   
@@ -142,7 +144,7 @@ const RelatorioTab: React.FC<Props> = ({ data, setData }) => {
     if (typeof html2canvas !== 'undefined') {
       // @ts-ignore
       html2canvas(element, {
-        scale: 6, // Resolução dobrada (de 3 para 6) para evitar imagem embaçada no WhatsApp
+        scale: 4, // Escala reduzida levemente para evitar limite de altura no WhatsApp, mas mantendo super alta resolução
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
@@ -158,7 +160,7 @@ const RelatorioTab: React.FC<Props> = ({ data, setData }) => {
           }
         }
       }).then(async (canvas) => {
-        const fileName = `ESCALA_ADFARE_${viewMode === 'weekly' ? 'SEMANAL' : 'MENSAL'}_${MONTHS[data.currentMonth].toUpperCase()}.png`;
+        const fileName = `ESCALA_ADFARE_${viewMode === 'weekly' ? 'SEMANAL' : 'MENSAL'}_${MONTHS[data.currentMonth].toUpperCase()}.jpg`;
         
         canvas.toBlob(async (blob: Blob | null) => {
           if (!blob) {
@@ -166,7 +168,7 @@ const RelatorioTab: React.FC<Props> = ({ data, setData }) => {
             return;
           }
 
-          const file = new File([blob], fileName, { type: 'image/png' });
+          const file = new File([blob], fileName, { type: 'image/jpeg' });
           
           // @ts-ignore
           if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -185,7 +187,7 @@ const RelatorioTab: React.FC<Props> = ({ data, setData }) => {
             window.open(waUrl, '_blank');
           }
           setIsExporting(false);
-        }, 'image/png');
+        }, 'image/jpeg', 1.0);
         
       }).catch((e) => {
         console.error("Erro na exportação:", e);
@@ -194,6 +196,16 @@ const RelatorioTab: React.FC<Props> = ({ data, setData }) => {
     } else {
       setIsExporting(false);
     }
+  };
+
+  const handleCopyPublicLink = () => {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const publicUrl = `${baseUrl}?view=public`;
+    
+    setCopyingLink(true);
+    navigator.clipboard.writeText(publicUrl).then(() => {
+      setTimeout(() => setCopyingLink(false), 2000);
+    });
   };
 
   const downloadImage = (canvas: HTMLCanvasElement, fileName: string) => {
@@ -317,40 +329,44 @@ const RelatorioTab: React.FC<Props> = ({ data, setData }) => {
       {/* Filtros e Controles */}
       <div className="bg-white p-5 rounded-[32px] shadow-sm border border-slate-100 no-print space-y-4">
         <div className="flex flex-col gap-4">
-          <div className="flex gap-2">
-            <div className="flex-grow relative">
-               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-900/30" size={18} />
-               <select 
-                value={data.currentMonth} 
-                onChange={handleMonthChange} 
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl font-black text-blue-900 uppercase text-xs outline-none focus:ring-2 focus:ring-blue-100 transition-all appearance-none"
+          {!isPublic && (
+            <div className="flex gap-2">
+              <div className="flex-grow relative">
+                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-900/30" size={18} />
+                 <select 
+                  value={data.currentMonth} 
+                  onChange={handleMonthChange} 
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl font-black text-blue-900 uppercase text-xs outline-none focus:ring-2 focus:ring-blue-100 transition-all appearance-none"
+                >
+                  {MONTHS.map((m, idx) => <option key={m} value={idx}>{m}</option>)}
+                </select>
+              </div>
+              <select 
+                value={data.currentYear} 
+                onChange={handleYearChange} 
+                className="min-w-[100px] px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl font-black text-blue-900 text-xs outline-none focus:ring-2 focus:ring-blue-100 transition-all appearance-none text-center"
               >
-                {MONTHS.map((m, idx) => <option key={m} value={idx}>{m}</option>)}
+                {years.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
-            <select 
-              value={data.currentYear} 
-              onChange={handleYearChange} 
-              className="min-w-[100px] px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl font-black text-blue-900 text-xs outline-none focus:ring-2 focus:ring-blue-100 transition-all appearance-none text-center"
-            >
-              {years.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-          </div>
+          )}
 
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
-            <input type="text" placeholder="Buscar por nome do obreiro..." value={filterName} onChange={e => setFilterName(e.target.value)} className="w-full pl-9 pr-8 py-3 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm text-slate-900 outline-none placeholder:text-slate-300" />
+            <input type="text" placeholder="Buscar por seu nome..." value={filterName} onChange={e => setFilterName(e.target.value)} className="w-full pl-9 pr-8 py-3 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm text-slate-900 outline-none placeholder:text-slate-300" />
             {filterName && <button onClick={() => setFilterName('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500 transition-colors"><X size={14} /></button>}
           </div>
 
-          <div className="flex bg-slate-100 p-1 rounded-2xl">
-            <button onClick={() => setViewMode('weekly')} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-1.5 transition-all ${viewMode === 'weekly' ? 'bg-white text-blue-900 shadow-sm' : 'text-slate-400'}`}><Zap size={14} /> Semana</button>
-            <button onClick={() => setViewMode('mobile')} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-1.5 transition-all ${viewMode === 'mobile' ? 'bg-white text-blue-900 shadow-sm' : 'text-slate-400'}`}><Smartphone size={14} /> Mês</button>
-            <button onClick={() => setViewMode('print')} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-1.5 transition-all ${viewMode === 'print' ? 'bg-white text-blue-900 shadow-sm' : 'text-slate-400'}`}><Printer size={14} /> Mural</button>
-          </div>
+          {!isPublic && (
+            <div className="flex bg-slate-100 p-1 rounded-2xl">
+              <button onClick={() => setViewMode('weekly')} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-1.5 transition-all ${viewMode === 'weekly' ? 'bg-white text-blue-900 shadow-sm' : 'text-slate-400'}`}><Zap size={14} /> Semana</button>
+              <button onClick={() => setViewMode('mobile')} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-1.5 transition-all ${viewMode === 'mobile' ? 'bg-white text-blue-900 shadow-sm' : 'text-slate-400'}`}><Smartphone size={14} /> Mês</button>
+              <button onClick={() => setViewMode('print')} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-1.5 transition-all ${viewMode === 'print' ? 'bg-white text-blue-900 shadow-sm' : 'text-slate-400'}`}><Printer size={14} /> Mural</button>
+            </div>
+          )}
         </div>
 
-        {viewMode === 'weekly' && weeks.length > 0 && (
+        {viewMode === 'weekly' && weeks.length > 0 && !isPublic && (
           <div className="flex items-center justify-between bg-blue-50 p-2 rounded-2xl border border-blue-100">
             <button disabled={selectedWeek === 0} onClick={() => setSelectedWeek(w => Math.max(0, w - 1))} className="p-2 text-blue-900 disabled:opacity-20 active:scale-90 transition-transform"><ChevronLeft size={24} /></button>
             <div className="text-center px-2 min-w-0">
@@ -361,15 +377,27 @@ const RelatorioTab: React.FC<Props> = ({ data, setData }) => {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
-          <button onClick={() => handleExportPDF()} disabled={isExporting || cultosToShow.length === 0} className="py-4 bg-adfare-navy text-white rounded-2xl font-black flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50">
-            <FileDown size={14} /> Salvar PDF
+        {!isPublic && (
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={() => handleExportPDF()} disabled={isExporting || cultosToShow.length === 0} className="py-4 bg-adfare-navy text-white rounded-2xl font-black flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50">
+              <FileDown size={14} /> Salvar PDF
+            </button>
+            <button onClick={handleExportImage} disabled={isExporting || cultosToShow.length === 0 || viewMode === 'print'} className="py-4 bg-adfare-gradient text-white rounded-2xl font-black flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest shadow-[0_8px_30px_rgb(243,112,33,0.3)] active:scale-95 transition-all disabled:opacity-50">
+              {isExporting ? <div className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full" /> : <Share2 size={14} />} 
+              {isExporting ? 'Processando...' : 'ZAP / Imagem'}
+            </button>
+          </div>
+        )}
+
+        {!isPublic && (
+          <button 
+            onClick={handleCopyPublicLink} 
+            className={`w-full py-4 mt-3 rounded-2xl font-black flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest transition-all shadow-sm ${copyingLink ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          >
+            {copyingLink ? <Check size={14} /> : <LinkIcon size={14} />}
+            {copyingLink ? 'Link Copiado!' : 'Copiar Link Público para Obreiros'}
           </button>
-          <button onClick={handleExportImage} disabled={isExporting || cultosToShow.length === 0 || viewMode === 'print'} className="py-4 bg-adfare-gradient text-white rounded-2xl font-black flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest shadow-[0_8px_30px_rgb(243,112,33,0.3)] active:scale-95 transition-all disabled:opacity-50">
-            {isExporting ? <div className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full" /> : <Share2 size={14} />} 
-            {isExporting ? 'Processando...' : 'ZAP / Imagem'}
-          </button>
-        </div>
+        )}
       </div>
 
       {/* RENDERIZADORES DE EXPORTAÇÃO (OCULTOS) */}
