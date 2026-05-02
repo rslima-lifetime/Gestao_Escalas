@@ -96,7 +96,7 @@ const ChecklistAdminTab: React.FC<Props> = ({ data, setData }) => {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-3">
           <input 
             type="text" 
             placeholder="NOME DA SEÇÃO (EX: ABERTURA)" 
@@ -107,9 +107,9 @@ const ChecklistAdminTab: React.FC<Props> = ({ data, setData }) => {
           />
           <button 
             onClick={addSection}
-            className="bg-blue-600 text-white px-6 rounded-[24px] font-black uppercase text-xs tracking-widest hover:bg-blue-700 transition active:scale-95 shadow-lg shadow-blue-100"
+            className="bg-blue-600 text-white p-4 sm:px-8 rounded-[24px] font-black uppercase text-xs tracking-widest hover:bg-blue-700 transition active:scale-95 shadow-lg shadow-blue-100 shrink-0"
           >
-            Adicionar
+            Criar Seção
           </button>
         </div>
       </div>
@@ -189,9 +189,9 @@ const ChecklistAdminTab: React.FC<Props> = ({ data, setData }) => {
                         <span className="flex-grow font-bold text-sm text-slate-700">{item.text}</span>
                         <button 
                           onClick={() => removeItem(section.id, item.id)}
-                          className="opacity-0 group-item-hover:opacity-100 p-2 text-slate-300 hover:text-rose-500 transition-all"
+                          className="opacity-40 sm:opacity-20 group-hover/item:opacity-100 p-2 text-slate-400 hover:text-rose-500 transition-all ml-auto"
                         >
-                          <X size={16} />
+                          <X size={18} />
                         </button>
                       </div>
                     ))}
