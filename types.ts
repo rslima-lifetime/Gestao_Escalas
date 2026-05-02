@@ -57,4 +57,10 @@ export interface AppDataV1 {
   currentMonth: number;
   currentYear: number;
   savedScales: SavedScale[];
+  announcement?: {
+    id: string;
+    text: string;
+    createdAt: string;
+    active: boolean;
+  };
 }

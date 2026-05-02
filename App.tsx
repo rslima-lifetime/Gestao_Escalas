@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, CalendarDays, ClipboardList, Database, Download, Upload, Trash2, Save, FolderOpen, X, History, Cloud, CloudOff, LogOut, User, ChevronDown, Edit2, Shield } from 'lucide-react';
+import { UserPlus, CalendarDays, ClipboardList, Database, Download, Upload, Trash2, Save, FolderOpen, X, History, Cloud, CloudOff, LogOut, User, ChevronDown, Edit2, Shield, Megaphone } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { AppDataV1, Obreiro, SavedScale } from './types';
 import ObreirosTab from './components/ObreirosTab';
@@ -67,6 +67,11 @@ const App: React.FC = () => {
   // Save scale form state
   const [showSaveScaleModal, setShowSaveScaleModal] = useState(false);
   const [saveScaleName, setSaveScaleName] = useState('');
+  
+  // Announcement state
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
+  const [announcementText, setAnnouncementText] = useState('');
+  const [announcementActive, setAnnouncementActive] = useState(true);
 
 
   useEffect(() => {
@@ -347,6 +352,18 @@ const App: React.FC = () => {
                           <span className="text-sm font-black text-slate-700 tracking-tighter">Biblioteca de Arquivos</span>
                         </button>
 
+                        <button onClick={() => { 
+                          setAnnouncementText(data.announcement?.text || ''); 
+                          setAnnouncementActive(data.announcement?.active ?? true);
+                          setShowAnnouncementModal(true); 
+                          setShowProfileMenu(false); 
+                        }} className="w-full text-left px-5 py-3 hover:bg-orange-50 flex items-center gap-3 group">
+                          <div className="bg-orange-100 p-2 rounded-xl text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                            <Megaphone size={16} />
+                          </div>
+                          <span className="text-sm font-black text-slate-700 tracking-tighter">Avisos ao Ministério</span>
+                        </button>
+
                         <button onClick={() => { handleResetBalances(); setShowProfileMenu(false); }} className="w-full text-left px-5 py-3 hover:bg-rose-50 flex items-center gap-3 group mb-1">
                           <div className="bg-rose-100 p-2 rounded-xl text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
                             <Trash2 size={16} />
@@ -555,6 +572,87 @@ const App: React.FC = () => {
                   Arquivar Agora
                 </button>
              </form>
+          </div>
+        </div>
+      )}
+
+      {showAnnouncementModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-[40px] shadow-2xl p-8 animate-in zoom-in-95">
+             <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="bg-orange-100 p-2 rounded-xl text-orange-600">
+                    <Megaphone size={20} />
+                  </div>
+                  <h3 className="text-xl font-black uppercase tracking-tighter">Aviso ao Ministério</h3>
+                </div>
+                <button onClick={() => setShowAnnouncementModal(false)} className="text-slate-400 hover:bg-slate-100 p-2 rounded-full"><X size={20} /></button>
+             </div>
+
+             <div className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 tracking-widest">Texto do Aviso (Público)</label>
+                  <textarea 
+                    value={announcementText}
+                    onChange={(e) => setAnnouncementText(e.target.value)}
+                    rows={4}
+                    className="w-full bg-slate-50 border border-slate-100 p-4 rounded-3xl outline-none focus:ring-4 focus:ring-orange-100 font-bold text-sm"
+                    placeholder="Digite o aviso importante para todos os obreiros..."
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-3xl border border-slate-100">
+                  <input 
+                    type="checkbox" 
+                    id="announcementActive"
+                    checked={announcementActive}
+                    onChange={(e) => setAnnouncementActive(e.target.checked)}
+                    className="w-5 h-5 accent-orange-600"
+                  />
+                  <label htmlFor="announcementActive" className="text-xs font-black text-slate-700 uppercase tracking-tight cursor-pointer">Aviso Ativo (Visível para todos)</label>
+                </div>
+                
+                <div className="flex gap-3 mt-6">
+                  <button 
+                    onClick={() => {
+                      setData(prev => ({
+                        ...prev,
+                        announcement: {
+                          id: crypto.randomUUID(),
+                          text: announcementText,
+                          createdAt: new Date().toISOString(),
+                          active: announcementActive
+                        }
+                      }));
+                      setShowAnnouncementModal(false);
+                      alert("Aviso atualizado e enviado para o mural público!");
+                    }}
+                    className="flex-1 bg-orange-600 text-white p-4 rounded-3xl font-black uppercase tracking-widest hover:bg-orange-700 transition shadow-lg shadow-orange-200"
+                  >
+                    Publicar Aviso
+                  </button>
+                  {data.announcement && (
+                    <button 
+                      onClick={() => {
+                        if (confirm("Deseja remover o aviso atual?")) {
+                          setData(prev => {
+                            const { announcement, ...rest } = prev;
+                            return rest as AppDataV1;
+                          });
+                          setShowAnnouncementModal(false);
+                        }
+                      }}
+                      className="p-4 bg-rose-50 text-rose-600 rounded-3xl hover:bg-rose-100 transition"
+                      title="Remover Aviso"
+                    >
+                      <Trash2 size={24} />
+                    </button>
+                  )}
+                </div>
+                <p className="text-[9px] font-bold text-slate-400 uppercase text-center tracking-widest italic mt-2">
+                  * Ao publicar, o aviso reaparecerá para todos os obreiros.
+                </p>
+             </div>
           </div>
         </div>
       )}

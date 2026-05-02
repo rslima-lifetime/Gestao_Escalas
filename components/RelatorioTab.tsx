@@ -1,6 +1,6 @@
 
 import React, { useRef, useState, useMemo } from 'react';
-import { Key, Users, Search, X, Smartphone, Printer, Share2, CalendarDays, FileDown, ChevronLeft, ChevronRight, Zap, ShieldCheck, Quote, Calendar, Wine, Link as LinkIcon, Check } from 'lucide-react';
+import { Key, Users, Search, X, Smartphone, Printer, Share2, CalendarDays, FileDown, ChevronLeft, ChevronRight, Zap, ShieldCheck, Quote, Calendar, Wine, Link as LinkIcon, Check, ChevronDown, Megaphone } from 'lucide-react';
 import { AppDataV1, Culto } from '../types';
 import { MONTHS, DAYS_SHORT } from '../constants';
 
@@ -16,8 +16,24 @@ const RelatorioTab: React.FC<Props> = ({ data, setData, isPublic = false }) => {
   const [viewMode, setViewMode] = useState<'print' | 'mobile' | 'weekly'>(isPublic ? 'mobile' : 'weekly');
   const [selectedWeek, setSelectedWeek] = useState(0);
   const [copyingLink, setCopyingLink] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   
   const reportRef = useRef<HTMLDivElement>(null);
+  const [showPublicAnnouncement, setShowPublicAnnouncement] = useState(() => {
+    if (!isPublic || !data.announcement || !data.announcement.active) return false;
+    const dismissedId = localStorage.getItem('adfare_dismissed_announcement_id');
+    return dismissedId !== data.announcement.id;
+  });
+
+  // Re-check announcement if it changes
+  React.useEffect(() => {
+    if (isPublic && data.announcement && data.announcement.active) {
+       const dismissedId = localStorage.getItem('adfare_dismissed_announcement_id');
+       if (dismissedId !== data.announcement.id) {
+          setShowPublicAnnouncement(true);
+       }
+    }
+  }, [data.announcement, isPublic]);
   
   // Refs para visualização (com escala)
   const weeklyPreviewRef = useRef<HTMLDivElement>(null);
@@ -351,10 +367,79 @@ const RelatorioTab: React.FC<Props> = ({ data, setData, isPublic = false }) => {
             </div>
           )}
 
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
-            <input type="text" placeholder="Buscar por seu nome..." value={filterName} onChange={e => setFilterName(e.target.value)} className="w-full pl-9 pr-8 py-3 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm text-slate-900 outline-none placeholder:text-slate-300" />
-            {filterName && <button onClick={() => setFilterName('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500 transition-colors"><X size={14} /></button>}
+          <div className="flex flex-col gap-2">
+            {isPublic && (
+              <div className="flex items-center gap-2 mb-1 ml-2">
+                <Users size={12} className="text-blue-500" />
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  Localize sua escala rápida:
+                </label>
+              </div>
+            )}
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 z-10" size={18} />
+              
+              <div className="relative">
+                <input 
+                  type="text" 
+                  placeholder={isPublic ? "SELECIONE OU BUSQUE SEU NOME..." : "Buscar por nome..."} 
+                  value={filterName} 
+                  onChange={e => {
+                    setFilterName(e.target.value);
+                    if (isPublic) setShowSuggestions(true);
+                  }} 
+                  onFocus={() => isPublic && setShowSuggestions(true)}
+                  className={`w-full pl-11 pr-20 py-4 bg-white border border-slate-200 rounded-[24px] font-black text-sm text-slate-900 outline-none focus:ring-4 focus:ring-blue-100 transition-all placeholder:text-slate-300 uppercase tracking-tight shadow-sm ${isPublic ? 'bg-blue-50/30 border-blue-100' : ''}`} 
+                />
+                
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  {filterName && (
+                    <button onClick={() => { setFilterName(''); setShowSuggestions(false); }} className="text-slate-400 hover:text-rose-500 transition-colors p-1 active:scale-90">
+                      <X size={18} />
+                    </button>
+                  )}
+                  {isPublic && (
+                    <button onClick={() => setShowSuggestions(!showSuggestions)} className="text-slate-300 hover:text-blue-500 transition-colors p-1">
+                      <ChevronDown size={18} className={`transition-transform duration-200 ${showSuggestions ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {isPublic && showSuggestions && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowSuggestions(false)}></div>
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-[24px] shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 max-h-[300px] overflow-y-auto">
+                    <div className="p-2 border-b border-slate-50 bg-slate-50/50">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-2">Escolha na lista abaixo:</span>
+                    </div>
+                    {data.obreiros
+                      .filter(o => !filterName || o.name.toLowerCase().includes(filterName.toLowerCase()))
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map(o => (
+                        <button
+                          key={o.id}
+                          onClick={() => {
+                            setFilterName(o.name);
+                            setShowSuggestions(false);
+                          }}
+                          className={`w-full text-left px-5 py-3.5 hover:bg-blue-50 flex items-center justify-between group transition-colors ${filterName === o.name ? 'bg-blue-50' : ''}`}
+                        >
+                          <span className={`text-[11px] font-black uppercase tracking-tight ${filterName === o.name ? 'text-blue-600' : 'text-slate-700'}`}>
+                            {o.name}
+                          </span>
+                          {filterName === o.name && <Check size={14} className="text-blue-600" />}
+                        </button>
+                      ))}
+                    {data.obreiros.filter(o => !filterName || o.name.toLowerCase().includes(filterName.toLowerCase())).length === 0 && (
+                      <div className="p-8 text-center text-slate-300 font-black uppercase text-[10px] tracking-widest">
+                        Nenhum obreiro encontrado
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           {!isPublic && (
@@ -505,6 +590,55 @@ const RelatorioTab: React.FC<Props> = ({ data, setData, isPublic = false }) => {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP DE AVISO PÚBLICO */}
+      {showPublicAnnouncement && data.announcement && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-6 no-print">
+          <div className="bg-white w-full max-w-sm rounded-[48px] shadow-2xl overflow-hidden animate-in zoom-in-95 flex flex-col relative border border-white/20">
+            <div className="absolute top-0 left-0 w-full h-2 bg-adfare-gradient"></div>
+            
+            <div className="p-8 pb-4 flex flex-col items-center text-center">
+              <div className="w-20 h-20 bg-orange-100 rounded-[32px] flex items-center justify-center text-orange-600 mb-6 shadow-inner">
+                <Megaphone size={40} />
+              </div>
+              
+              <h3 className="text-2xl font-black uppercase tracking-tighter text-slate-900 mb-2">Aviso Importante</h3>
+              <div className="h-1 w-12 bg-orange-200 rounded-full mb-6"></div>
+              
+              <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-100 w-full mb-6">
+                <p className="text-slate-700 font-bold leading-relaxed text-sm whitespace-pre-wrap">
+                  {data.announcement.text}
+                </p>
+              </div>
+
+              <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-8">
+                Publicado em {new Date(data.announcement.createdAt).toLocaleDateString()}
+              </span>
+            </div>
+
+            <div className="p-8 pt-0 flex flex-col gap-3">
+              <button 
+                onClick={() => setShowPublicAnnouncement(false)}
+                className="w-full py-5 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+              >
+                Entendi, Fechar
+              </button>
+              
+              <button 
+                onClick={() => {
+                  if (data.announcement) {
+                    localStorage.setItem('adfare_dismissed_announcement_id', data.announcement.id);
+                    setShowPublicAnnouncement(false);
+                  }
+                }}
+                className="w-full py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-slate-600 transition-colors"
+              >
+                Não ver mais este aviso
+              </button>
             </div>
           </div>
         </div>
