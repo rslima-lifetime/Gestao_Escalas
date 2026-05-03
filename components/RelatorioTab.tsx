@@ -20,6 +20,8 @@ const RelatorioTab: React.FC<Props> = ({ data, setData, isPublic = false }) => {
   
   const reportRef = useRef<HTMLDivElement>(null);
   const [showPublicChecklist, setShowPublicChecklist] = useState(false);
+  const [editingChecklistCultoId, setEditingChecklistCultoId] = useState<string | null>(null);
+  const [currentObservation, setCurrentObservation] = useState('');
   const [expandedPublicSections, setExpandedPublicSections] = useState<Record<string, boolean>>({});
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [showPublicAnnouncement, setShowPublicAnnouncement] = useState(() => {
@@ -163,7 +165,7 @@ const RelatorioTab: React.FC<Props> = ({ data, setData, isPublic = false }) => {
     if (typeof html2canvas !== 'undefined') {
       // @ts-ignore
       html2canvas(element, {
-        scale: 4, // Escala reduzida levemente para evitar limite de altura no WhatsApp, mas mantendo super alta resolução
+        scale: 4, 
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
@@ -232,6 +234,69 @@ const RelatorioTab: React.FC<Props> = ({ data, setData, isPublic = false }) => {
     link.download = fileName;
     link.href = canvas.toDataURL('image/png', 1.0);
     link.click();
+  };
+
+  const handleOpenChecklist = (culto: Culto) => {
+    setEditingChecklistCultoId(culto.id);
+    setCurrentObservation(culto.checklistResults?.observation || '');
+    
+    // Load checked items
+    const newChecked: Record<string, boolean> = {};
+    culto.checklistResults?.checkedItems.forEach(id => {
+      newChecked[id] = true;
+    });
+    setCheckedItems(newChecked);
+    setShowPublicChecklist(true);
+  };
+
+  const handleSaveChecklist = () => {
+    if (!editingChecklistCultoId) return;
+
+    const checkedIds = Object.keys(checkedItems).filter(id => checkedItems[id]);
+    
+    setData?.(prev => ({
+      ...prev,
+      cultos: prev.cultos.map(c => 
+        c.id === editingChecklistCultoId 
+          ? { 
+              ...c, 
+              checklistResults: { 
+                checkedItems: checkedIds, 
+                observation: currentObservation, 
+                updatedAt: new Date().toISOString() 
+              } 
+            } 
+          : c
+      )
+    }));
+
+    setShowPublicChecklist(false);
+    setEditingChecklistCultoId(null);
+    alert("Checklist e observações salvos com sucesso!");
+  };
+
+  const handleToggleSection = (sectionId: string, itemIds: string[], allChecked: boolean) => {
+    const newChecked = { ...checkedItems };
+    itemIds.forEach(id => {
+      newChecked[id] = !allChecked;
+    });
+    setCheckedItems(newChecked);
+  };
+
+  const getChecklistProgress = (culto: Culto) => {
+    if (!data.checklists || data.checklists.length === 0) return null;
+    
+    const totalItems = data.checklists.reduce((acc, s) => acc + s.items.length, 0);
+    if (totalItems === 0) return null;
+
+    const checkedCount = culto.checklistResults?.checkedItems.length || 0;
+    const percentage = Math.round((checkedCount / totalItems) * 100);
+
+    return {
+      percentage,
+      count: checkedCount,
+      total: totalItems
+    };
   };
 
   const renderDigitalLayout = (ref: React.RefObject<HTMLDivElement>, id: string, title: string, dateLabel: string, cultos: Culto[], isExport = false) => (
@@ -313,6 +378,36 @@ const RelatorioTab: React.FC<Props> = ({ data, setData, isPublic = false }) => {
                       </div>
                     </div>
                   )}
+
+                  {isPublic && data.checklists && data.checklists.length > 0 && (() => {
+                    const progress = getChecklistProgress(culto);
+                    return (
+                      <div className="mt-4 pt-4 border-t border-slate-100/10 flex flex-col gap-3">
+                         <div className="flex items-center justify-between">
+                            <button 
+                              onClick={() => handleOpenChecklist(culto)}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${progress?.percentage === 100 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}
+                            >
+                              <ListChecks size={14} />
+                              {progress?.percentage === 100 ? 'Checklist 100%' : (progress?.percentage ? `${progress.percentage}% Concluído` : 'Abrir Checklist')}
+                            </button>
+                            {culto.checklistResults?.observation && (
+                              <div className="flex items-center gap-1.5 text-[8px] font-bold text-slate-400 uppercase italic">
+                                <Check size={10} className="text-emerald-500" /> Possui Observações
+                              </div>
+                            )}
+                         </div>
+                         {progress && progress.percentage > 0 && (
+                           <div className="w-full h-1.5 bg-slate-100/10 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full transition-all duration-500 ${progress.percentage === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} 
+                                style={{ width: `${progress.percentage}%` }}
+                              ></div>
+                           </div>
+                         )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -487,14 +582,10 @@ const RelatorioTab: React.FC<Props> = ({ data, setData, isPublic = false }) => {
           </button>
         )}
 
-        {isPublic && data.checklists && data.checklists.length > 0 && (
-          <button 
-            onClick={() => setShowPublicChecklist(true)} 
-            className="w-full py-5 mt-2 bg-blue-600 text-white rounded-[24px] font-black flex items-center justify-center gap-3 text-[11px] uppercase tracking-widest shadow-[0_10px_30px_rgba(37,99,235,0.3)] active:scale-95 transition-all"
-          >
-            <ListChecks size={18} />
-            Roteiros e Checklists
-          </button>
+        {copyingLink && (
+          <div className="w-full py-4 mt-4 bg-emerald-50 text-emerald-600 rounded-[24px] font-black text-[10px] uppercase tracking-widest text-center animate-in fade-in zoom-in-95">
+             Link Copiado! Compartilhe no WhatsApp
+          </div>
         )}
       </div>
 
@@ -675,65 +766,92 @@ const RelatorioTab: React.FC<Props> = ({ data, setData, isPublic = false }) => {
               </div>
 
               <div className="p-6 overflow-y-auto space-y-3 flex-grow bg-slate-50/50">
-                 {data.checklists?.map(section => (
-                    <div key={section.id} className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden transition-all">
-                       <button 
-                         onClick={() => setExpandedPublicSections(prev => ({ ...prev, [section.id]: !prev[section.id] }))}
-                         className="w-full flex items-center justify-between p-5 hover:bg-slate-50/50 transition-colors"
-                       >
-                          <div className="flex items-center gap-3">
-                             <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${expandedPublicSections[section.id] ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-500'}`}>
-                                <ListChecks size={16} />
-                             </div>
-                             <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-widest">{section.title}</h4>
-                          </div>
-                          {expandedPublicSections[section.id] ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
-                       </button>
-                       
-                       {expandedPublicSections[section.id] && (
-                          <div className="px-5 pb-5 pt-2 grid gap-2 animate-in slide-in-from-top-2">
-                             {section.items.map(item => (
-                                <label 
-                                  key={item.id} 
-                                  className={`flex items-center gap-4 p-4 rounded-[24px] border transition-all cursor-pointer ${checkedItems[item.id] ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-slate-50 shadow-sm hover:border-blue-200'}`}
-                                >
-                                   <div className="relative flex items-center justify-center">
-                                      <input 
-                                        type="checkbox" 
-                                        className="peer hidden" 
-                                        checked={!!checkedItems[item.id]}
-                                        onChange={() => setCheckedItems(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
-                                      />
-                                      <div className={`w-7 h-7 rounded-xl border-2 flex items-center justify-center transition-all ${checkedItems[item.id] ? 'bg-emerald-500 border-emerald-500 text-white scale-110 shadow-lg shadow-emerald-100' : 'bg-slate-50 border-slate-200 text-transparent'}`}>
-                                         <Check size={16} strokeWidth={4} />
-                                      </div>
-                                   </div>
-                                   <span className={`text-sm font-bold tracking-tight leading-snug transition-all ${checkedItems[item.id] ? 'text-emerald-700 line-through opacity-60' : 'text-slate-700'}`}>
+                 {data.checklists?.map(section => {
+                    const itemIds = section.items.map(i => i.id);
+                    const allChecked = itemIds.length > 0 && itemIds.every(id => checkedItems[id]);
+                    
+                    return (
+                      <div key={section.id} className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden transition-all">
+                        <div className="w-full flex items-center justify-between p-5">
+                            <button 
+                              onClick={() => setExpandedPublicSections(prev => ({ ...prev, [section.id]: !prev[section.id] }))}
+                              className="flex items-center gap-3 flex-grow text-left"
+                            >
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${expandedPublicSections[section.id] ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-500'}`}>
+                                  <ListChecks size={16} />
+                                </div>
+                                <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-widest">{section.title}</h4>
+                                {expandedPublicSections[section.id] ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
+                            </button>
+                            
+                            <button 
+                              onClick={() => handleToggleSection(section.id, itemIds, allChecked)}
+                              className={`px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${allChecked ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500 hover:bg-blue-50 hover:text-blue-600'}`}
+                            >
+                              {allChecked ? 'Tudo OK' : 'Marcar Tudo'}
+                            </button>
+                        </div>
+                        
+                        {expandedPublicSections[section.id] && (
+                            <div className="px-5 pb-5 pt-2 grid gap-2 animate-in slide-in-from-top-2">
+                              {section.items.map(item => (
+                                  <label 
+                                    key={item.id} 
+                                    className={`flex items-center gap-4 p-4 rounded-[24px] border transition-all cursor-pointer ${checkedItems[item.id] ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-slate-50 shadow-sm hover:border-blue-200'}`}
+                                  >
+                                    <div className="relative flex items-center justify-center">
+                                        <input 
+                                          type="checkbox" 
+                                          className="peer hidden" 
+                                          checked={!!checkedItems[item.id]}
+                                          onChange={() => setCheckedItems(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                        />
+                                        <div className={`w-7 h-7 rounded-xl border-2 flex items-center justify-center transition-all ${checkedItems[item.id] ? 'bg-emerald-500 border-emerald-500 text-white scale-110 shadow-lg shadow-emerald-100' : 'bg-slate-50 border-slate-200 text-transparent'}`}>
+                                          <Check size={16} strokeWidth={4} />
+                                        </div>
+                                    </div>
+                                    <span className={`text-sm font-bold tracking-tight leading-snug transition-all ${checkedItems[item.id] ? 'text-emerald-700 line-through opacity-60' : 'text-slate-700'}`}>
                                       {item.text}
-                                   </span>
-                                </label>
-                             ))}
-                             {section.items.length === 0 && (
-                               <p className="text-center py-4 text-[10px] font-bold text-slate-300 uppercase italic">Nenhuma atividade cadastrada</p>
-                             )}
-                          </div>
-                       )}
-                    </div>
-                 ))}
+                                    </span>
+                                  </label>
+                              ))}
+                              {section.items.length === 0 && (
+                                <p className="text-center py-4 text-[10px] font-bold text-slate-300 uppercase italic">Nenhuma atividade cadastrada</p>
+                              )}
+                            </div>
+                        )}
+                      </div>
+                    );
+                 })}
               </div>
 
               <div className="p-8 bg-white border-t border-slate-100 shrink-0 flex flex-col gap-3">
+                 <div className="mb-4">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 tracking-widest">Observações / Ocorrências</label>
+                    <textarea 
+                      value={currentObservation}
+                      onChange={(e) => setCurrentObservation(e.target.value)}
+                      rows={3}
+                      className="w-full bg-slate-50 border border-slate-100 p-4 rounded-[24px] outline-none focus:ring-4 focus:ring-blue-100 font-bold text-sm"
+                      placeholder="Relate aqui qualquer observação importante sobre o culto..."
+                    />
+                 </div>
+                 
                  <button 
-                   onClick={() => setShowPublicChecklist(false)}
-                   className="w-full py-5 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+                   onClick={handleSaveChecklist}
+                   className="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
                  >
-                   Concluir Rotina
+                   Salvar Checklist
                  </button>
                  <button 
-                   onClick={() => setCheckedItems({})}
+                   onClick={() => {
+                     if (confirm("Deseja limpar todas as seleções?")) {
+                       setCheckedItems({});
+                     }
+                   }}
                    className="w-full py-3 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-rose-500 transition-colors"
                  >
-                   Limpar Tudo
+                   Limpar Seleções
                  </button>
               </div>
            </div>

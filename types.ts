@@ -39,6 +39,11 @@ export interface Culto {
   workersAbertura: string[]; // IDs dos obreiros de Abertura/Fechamento
   workersApoio: string[];     // IDs dos obreiros de Apoio
   santaCeiaWorkers?: SantaCeiaWorkers;
+  checklistResults?: {
+    checkedItems: string[];
+    observation: string;
+    updatedAt: string;
+  };
 }
 
 export interface SavedScale {
