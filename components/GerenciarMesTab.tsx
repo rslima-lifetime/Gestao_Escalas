@@ -14,6 +14,7 @@ const GerenciarMesTab: React.FC<Props> = ({ data, setData }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPicker, setShowPicker] = useState<{ cultoId: string, role: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [pickerSearchTerm, setPickerSearchTerm] = useState('');
 
   const [newCulto, setNewCulto] = useState({
     date: '',
@@ -190,6 +191,7 @@ const GerenciarMesTab: React.FC<Props> = ({ data, setData }) => {
       return { ...prev, cultos: updatedCultos, obreiros: recalculateGlobalBalances(prev.obreiros, updatedCultos) };
     });
     setShowPicker(null);
+    setPickerSearchTerm('');
   };
 
   const removeWorker = (cultoId: string, obreiroId: string, role: string) => {
@@ -524,11 +526,32 @@ const GerenciarMesTab: React.FC<Props> = ({ data, setData }) => {
                 <h3 className="font-black uppercase tracking-tighter flex items-center gap-3"><History size={20} className="text-blue-400" /> Escalar Obreiro</h3>
                 <span className="text-[10px] font-bold text-blue-400 uppercase">Ref: {data.cultos.find(c => c.id === showPicker.cultoId)?.date.split('-').reverse().join('/')} - {data.cultos.find(c => c.id === showPicker.cultoId)?.name}</span>
               </div>
-              <button onClick={() => setShowPicker(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={24} /></button>
+              <button onClick={() => { setShowPicker(null); setPickerSearchTerm(''); }} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={24} /></button>
             </div>
             
             <div className="bg-blue-50 px-6 py-2 border-b border-blue-100 shrink-0">
                <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest leading-none">Cálculo de Saldo Baseado em Todo o Histórico de Cultos</span>
+            </div>
+
+            <div className="px-6 py-3 bg-white border-b border-slate-100 shrink-0">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                <input 
+                  type="text" 
+                  placeholder="Pesquisar obreiro..." 
+                  value={pickerSearchTerm} 
+                  onChange={e => setPickerSearchTerm(e.target.value)} 
+                  className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-xs text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-blue-100 outline-none transition-all" 
+                />
+                {pickerSearchTerm && (
+                  <button 
+                    onClick={() => setPickerSearchTerm('')} 
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
             </div>
             
             <div className="p-4 overflow-y-auto space-y-3 flex-grow bg-slate-50">
@@ -556,8 +579,20 @@ const GerenciarMesTab: React.FC<Props> = ({ data, setData }) => {
                 });
 
                 const maxRest = Math.max(...workerStats.map(s => s.diffDays));
+
+                const filteredStats = workerStats.filter(stat => 
+                  !pickerSearchTerm || stat.o.name.toLowerCase().includes(pickerSearchTerm.toLowerCase())
+                );
+
+                if (filteredStats.length === 0) {
+                  return (
+                    <div className="py-12 text-center text-slate-400 font-bold uppercase text-xs tracking-wider">
+                      Nenhum obreiro encontrado
+                    </div>
+                  );
+                }
                 
-                return workerStats
+                return filteredStats
                   .sort((a, b) => {
                     if (a.inCurrentCulto !== b.inCurrentCulto) return a.inCurrentCulto ? 1 : -1;
                     if (a.diffDays !== b.diffDays) return b.diffDays - a.diffDays;
@@ -661,10 +696,9 @@ const GerenciarMesTab: React.FC<Props> = ({ data, setData }) => {
                   });
               })()}
             </div>
-            
-            <div className="p-4 bg-white border-t border-slate-50 shrink-0">
-               <button onClick={() => setShowPicker(null)} className="w-full py-4 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-widest active:scale-95 transition-all">Cancelar</button>
-            </div>
+                        <div className="p-4 bg-white border-t border-slate-50 shrink-0">
+                <button onClick={() => { setShowPicker(null); setPickerSearchTerm(''); }} className="w-full py-4 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-widest active:scale-95 transition-all">Cancelar</button>
+             </div>
           </div>
         </div>
       )}
