@@ -434,13 +434,13 @@ const GerenciarMesTab: React.FC<Props> = ({ data, setData }) => {
                 </div>
                 <h4 className="font-black text-slate-900 text-xl uppercase tracking-tighter">{DAYS_FULL[culto.dayOfWeek]} • {culto.time}H</h4>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5 shrink-0 items-center">
                 <button 
                   onClick={() => handleShowPreviousWeek(culto)}
-                  className="p-4 bg-slate-50 text-slate-300 rounded-2xl border border-slate-100 shadow-sm hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                  className="p-2.5 bg-slate-50 text-slate-300 rounded-xl border border-slate-100 shadow-sm hover:text-blue-500 hover:bg-blue-50 transition-colors shrink-0"
                   title={`Ver escala de ${DAYS_FULL[culto.dayOfWeek].toLowerCase()} anterior`}
                 >
-                  <History size={20} />
+                  <History size={16} />
                 </button>
                 <button 
                   onClick={() => {
@@ -449,9 +449,9 @@ const GerenciarMesTab: React.FC<Props> = ({ data, setData }) => {
                       cultos: prev.cultos.map(c => c.id === culto.id ? { ...c, isSantaCeia: !c.isSantaCeia } : c)
                     }));
                   }} 
-                  className={`p-4 rounded-2xl border shadow-sm transition-all ${culto.isSantaCeia ? 'bg-purple-600 border-purple-600 text-white shadow-purple-200' : 'bg-slate-50 border-slate-100 text-slate-300 hover:text-purple-400'}`}
+                  className={`p-2.5 rounded-xl border shadow-sm transition-all shrink-0 ${culto.isSantaCeia ? 'bg-purple-600 border-purple-600 text-white shadow-purple-200' : 'bg-slate-50 border-slate-100 text-slate-300 hover:text-purple-400'}`}
                 >
-                  <Wine size={20} />
+                  <Wine size={16} />
                 </button>
                 <button 
                   onClick={() => {
@@ -462,9 +462,9 @@ const GerenciarMesTab: React.FC<Props> = ({ data, setData }) => {
                       });
                     }
                   }} 
-                  className="p-4 bg-slate-50 text-slate-300 rounded-2xl border border-slate-100 shadow-sm hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                  className="p-2.5 bg-slate-50 text-slate-300 rounded-xl border border-slate-100 shadow-sm hover:text-rose-500 hover:bg-rose-50 transition-colors shrink-0"
                 >
-                  <Trash2 size={20} />
+                  <Trash2 size={16} />
                 </button>
               </div>
             </div>
