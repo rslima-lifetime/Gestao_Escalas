@@ -15,6 +15,7 @@ const GerenciarMesTab: React.FC<Props> = ({ data, setData }) => {
   const [showPicker, setShowPicker] = useState<{ cultoId: string, role: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [pickerSearchTerm, setPickerSearchTerm] = useState('');
+  const [showHistoryModal, setShowHistoryModal] = useState<{ culto: Culto; pastCultos: Culto[] } | null>(null);
 
   const [newCulto, setNewCulto] = useState({
     date: '',
@@ -313,6 +314,21 @@ const GerenciarMesTab: React.FC<Props> = ({ data, setData }) => {
       .sort((a, b) => a.date.localeCompare(b.date));
   };
 
+  const handleShowPreviousWeek = (culto: Culto) => {
+    const pastSameDay = data.cultos
+      .filter(c => c.date < culto.date && c.dayOfWeek === culto.dayOfWeek)
+      .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time));
+    
+    if (pastSameDay.length === 0) {
+      alert(`Nenhum culto de ${DAYS_FULL[culto.dayOfWeek].toLowerCase()} anterior encontrado no histórico.`);
+      return;
+    }
+    
+    const lastDate = pastSameDay[0].date;
+    const pastCultos = pastSameDay.filter(c => c.date === lastDate);
+    setShowHistoryModal({ culto, pastCultos });
+  };
+
   const filteredCultos = cultosDoMes.filter(culto => {
     if (!searchTerm) return true;
     const s = searchTerm.toLowerCase();
@@ -419,6 +435,13 @@ const GerenciarMesTab: React.FC<Props> = ({ data, setData }) => {
                 <h4 className="font-black text-slate-900 text-xl uppercase tracking-tighter">{DAYS_FULL[culto.dayOfWeek]} • {culto.time}H</h4>
               </div>
               <div className="flex gap-2">
+                <button 
+                  onClick={() => handleShowPreviousWeek(culto)}
+                  className="p-4 bg-slate-50 text-slate-300 rounded-2xl border border-slate-100 shadow-sm hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                  title={`Ver escala de ${DAYS_FULL[culto.dayOfWeek].toLowerCase()} anterior`}
+                >
+                  <History size={20} />
+                </button>
                 <button 
                   onClick={() => {
                     setData(prev => ({
@@ -699,6 +722,119 @@ const GerenciarMesTab: React.FC<Props> = ({ data, setData }) => {
                         <div className="p-4 bg-white border-t border-slate-50 shrink-0">
                 <button onClick={() => { setShowPicker(null); setPickerSearchTerm(''); }} className="w-full py-4 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-widest active:scale-95 transition-all">Cancelar</button>
              </div>
+          </div>
+        </div>
+      )}
+
+      {showHistoryModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 flex flex-col max-h-[85vh]">
+            <div className="p-6 bg-slate-900 text-white flex justify-between items-center shrink-0">
+              <div className="flex flex-col">
+                <h3 className="font-black uppercase tracking-tighter flex items-center gap-3">
+                  <History size={20} className="text-blue-400" />
+                  Escala Anterior
+                </h3>
+                <span className="text-[10px] font-bold text-blue-400 uppercase">
+                  Referência: {DAYS_FULL[showHistoryModal.culto.dayOfWeek]}
+                </span>
+              </div>
+              <button 
+                onClick={() => setShowHistoryModal(null)} 
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4 flex-grow bg-slate-50">
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider text-center">
+                Última escala de {DAYS_FULL[showHistoryModal.culto.dayOfWeek].toLowerCase()} ({showHistoryModal.pastCultos[0].date.split('-').reverse().join('/')})
+              </p>
+
+              {showHistoryModal.pastCultos.map(pc => (
+                <div key={pc.id} className="bg-white p-5 rounded-[32px] border border-slate-100 shadow-sm space-y-4">
+                  <div className="flex justify-between items-center border-b border-slate-50 pb-2">
+                    <span className="text-xs font-black text-slate-800 uppercase tracking-tighter truncate">
+                      {pc.name}
+                    </span>
+                    <span className="text-[10px] font-black bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full shrink-0">
+                      {pc.time}H
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-[9px] font-black text-blue-900 uppercase block mb-1">Abertura</span>
+                      {pc.workersAbertura.length === 0 ? (
+                        <span className="text-[10px] text-slate-400 uppercase font-bold italic">Nenhum obreiro escalado</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {pc.workersAbertura.map(wid => {
+                            const name = data.obreiros.find(o => o.id === wid)?.name || 'Desconhecido';
+                            return (
+                              <span key={wid} className="text-[10px] font-black bg-slate-100 text-slate-700 px-2 py-1 rounded-lg uppercase">
+                                {name}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <span className="text-[9px] font-black text-emerald-900 uppercase block mb-1">Apoio</span>
+                      {pc.workersApoio.length === 0 ? (
+                        <span className="text-[10px] text-slate-400 uppercase font-bold italic">Nenhum obreiro escalado</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {pc.workersApoio.map(wid => {
+                            const name = data.obreiros.find(o => o.id === wid)?.name || 'Desconhecido';
+                            return (
+                              <span key={wid} className="text-[10px] font-black bg-slate-100 text-slate-700 px-2 py-1 rounded-lg uppercase">
+                                {name}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {pc.isSantaCeia && pc.santaCeiaWorkers && (
+                      <div className="bg-purple-50/40 p-3 rounded-2xl border border-purple-100/50 space-y-1">
+                        <span className="text-[8px] font-black text-purple-900 uppercase block mb-1">Equipe Santa Ceia</span>
+                        <div className="grid grid-cols-2 gap-2">
+                          {Object.entries({
+                            arrumarMesa: 'Arrumação',
+                            desarrumarMesa: 'Desarrumação',
+                            servirPao: 'Pão',
+                            servirVinho: 'Vinho'
+                          }).map(([key, label]) => {
+                            const wid = pc.santaCeiaWorkers?.[key as keyof typeof pc.santaCeiaWorkers];
+                            const name = data.obreiros.find(o => o.id === wid)?.name || 'Vazio';
+                            return (
+                              <div key={key} className="flex flex-col">
+                                <span className="text-[7px] font-black text-purple-400 uppercase leading-none">{label}</span>
+                                <span className="text-[9px] font-black text-slate-700 uppercase truncate">{name}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-4 bg-white border-t border-slate-50 shrink-0">
+              <button 
+                onClick={() => setShowHistoryModal(null)} 
+                className="w-full py-4 bg-slate-900 text-white rounded-[24px] font-black uppercase tracking-widest active:scale-95 transition-all"
+              >
+                Fechar
+              </button>
+            </div>
           </div>
         </div>
       )}
